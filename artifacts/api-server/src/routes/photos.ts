@@ -32,6 +32,10 @@ const BACKGROUNDS: { id: string; name: string; file: string }[] = [
   { id: "warm-wood", name: "Warm Wood", file: "bg-warm-wood.png" },
   { id: "marble", name: "Marble", file: "bg-marble.png" },
   { id: "sunset-orange", name: "Sunset Orange", file: "bg-sunset-orange.png" },
+  { id: "concrete", name: "Concrete Loft", file: "bg-concrete.png" },
+  { id: "blush-pink", name: "Blush Pink", file: "bg-blush-pink.png" },
+  { id: "midnight-navy", name: "Midnight Navy", file: "bg-midnight-navy.png" },
+  { id: "botanical", name: "Botanical", file: "bg-botanical.png" },
 ];
 
 const OUTPUT_SIZE = 900;
