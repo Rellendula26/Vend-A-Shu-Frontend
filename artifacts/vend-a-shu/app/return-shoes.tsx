@@ -20,6 +20,7 @@ import {
   GhostButton,
   OrangeButton,
   shoeEmoji,
+  ShoeImage,
   useScreenInsets,
 } from '@/components/vas';
 import {
@@ -63,7 +64,11 @@ export default function ReturnShoes() {
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}
         >
-          <Text style={styles.confirmEmoji}>{shoeEmoji(selected)}</Text>
+          <ShoeImage
+            shoe={selected}
+            imageStyle={styles.confirmPhoto}
+            emojiStyle={styles.confirmEmoji}
+          />
           <View style={[styles.detailCard, { backgroundColor: colors.card }]}>
             <DetailRow label="Shoe Type" value={selected.shoeType} />
             <DetailRow
@@ -144,7 +149,11 @@ export default function ReturnShoes() {
               onPress={() => setSelected(item)}
               testID={`return-shoe-${item.id}`}
             >
-              <Text style={styles.thumbEmoji}>{shoeEmoji(item)}</Text>
+              <ShoeImage
+                shoe={item}
+                imageStyle={styles.thumbPhoto}
+                emojiStyle={styles.thumbEmoji}
+              />
               <Text style={[styles.thumbLabel, { color: colors.navy }]} numberOfLines={1}>
                 {item.shoeType}
               </Text>
@@ -184,6 +193,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   thumbEmoji: { fontSize: 34, marginBottom: 4 },
+  thumbPhoto: { width: 64, height: 64, borderRadius: 8, marginBottom: 4 },
+  confirmPhoto: {
+    width: 160,
+    height: 160,
+    borderRadius: 12,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
   thumbLabel: { fontSize: 12, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
   thumbSub: { fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   empty: { alignItems: 'center', marginTop: 60, gap: 12, paddingHorizontal: 40 },

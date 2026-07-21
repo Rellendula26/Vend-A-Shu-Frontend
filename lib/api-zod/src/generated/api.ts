@@ -90,7 +90,8 @@ export const AddShoeBody = zod.object({
   "binCol": zod.string(),
   "binRow": zod.string(),
   "binLocation": zod.string(),
-  "labelText": zod.string().optional()
+  "labelText": zod.string().optional(),
+  "photoBase64": zod.string().optional().describe('Processed photo as a base64 data URI (JPEG\/PNG)')
 })
 
 export const AddShoeResponse = zod.object({
@@ -180,6 +181,30 @@ export const ListAvailableBinsResponseItem = zod.object({
   "shoeId": zod.number().nullish()
 })
 export const ListAvailableBinsResponse = zod.array(ListAvailableBinsResponseItem)
+
+
+/**
+ * @summary List premade photo backgrounds
+ */
+export const ListPhotoBackgroundsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "url": zod.string().describe('Relative URL to a preview image of this background')
+})
+export const ListPhotoBackgroundsResponse = zod.array(ListPhotoBackgroundsResponseItem)
+
+
+/**
+ * @summary Remove the background from a shoe photo and composite it onto a backdrop
+ */
+export const ProcessPhotoBody = zod.object({
+  "imageBase64": zod.string().describe('Source photo as a base64 data URI or raw base64'),
+  "background": zod.string().describe('\'white\', \'transparent\', or a premade background id')
+})
+
+export const ProcessPhotoResponse = zod.object({
+  "imageBase64": zod.string().describe('Processed photo as a base64 data URI')
+})
 
 
 /**

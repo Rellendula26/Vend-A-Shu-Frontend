@@ -69,6 +69,27 @@ export interface ShoeInput {
   binRow: string;
   binLocation: string;
   labelText?: string;
+  /** Processed photo as a base64 data URI (JPEG/PNG) */
+  photoBase64?: string;
+}
+
+export interface PhotoBackground {
+  id: string;
+  name: string;
+  /** Relative URL to a preview image of this background */
+  url: string;
+}
+
+export interface ProcessPhotoRequest {
+  /** Source photo as a base64 data URI or raw base64 */
+  imageBase64: string;
+  /** 'white', 'transparent', or a premade background id */
+  background: string;
+}
+
+export interface ProcessPhotoResult {
+  /** Processed photo as a base64 data URI */
+  imageBase64: string;
 }
 
 export interface Bin {

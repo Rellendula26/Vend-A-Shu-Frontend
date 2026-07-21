@@ -18,6 +18,8 @@ tags:
     description: Storage bin operations
   - name: vend
     description: Vending hardware operations
+  - name: photos
+    description: Shoe photo processing operations
 paths:
   /healthz:
     get:
@@ -193,6 +195,44 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Bin"
+  /photos/backgrounds:
+    get:
+      operationId: listPhotoBackgrounds
+      tags: [photos]
+      summary: List premade photo backgrounds
+      responses:
+        "200":
+          description: Available backgrounds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PhotoBackground"
+  /photos/process:
+    post:
+      operationId: processPhoto
+      tags: [photos]
+      summary: Remove the background from a shoe photo and composite it onto a backdrop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProcessPhotoRequest"
+      responses:
+        "200":
+          description: Processed photo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessPhotoResult"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /vend:
     post:
       operationId: vendShoe
@@ -378,6 +418,37 @@ components:
           type: string
         labelText:
           type: string
+        photoBase64:
+          type: string
+          description: Processed photo as a base64 data URI (JPEG/PNG)
+    PhotoBackground:
+      type: object
+      required: [id, name, url]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        url:
+          type: string
+          description: Relative URL to a preview image of this background
+    ProcessPhotoRequest:
+      type: object
+      required: [imageBase64, background]
+      properties:
+        imageBase64:
+          type: string
+          description: Source photo as a base64 data URI or raw base64
+        background:
+          type: string
+          description: "'white', 'transparent', or a premade background id"
+    ProcessPhotoResult:
+      type: object
+      required: [imageBase64]
+      properties:
+        imageBase64:
+          type: string
+          description: Processed photo as a base64 data URI
     Bin:
       type: object
       required: [id, subsection, binCol, binRow, binLocation, status]

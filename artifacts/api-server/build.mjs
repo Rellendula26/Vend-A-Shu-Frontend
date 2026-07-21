@@ -55,6 +55,7 @@ async function buildAll() {
       "typeorm",
       "protobufjs",
       "onnxruntime-node",
+      "@imgly/*",
       "@tensorflow/*",
       "@prisma/client",
       "@mikro-orm/*",

@@ -19,4 +19,6 @@ export interface ShoeInput {
   binRow: string;
   binLocation: string;
   labelText?: string;
+  /** Processed photo as a base64 data URI (JPEG/PNG) */
+  photoBase64?: string;
 }

@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import {
+  Image,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  type StyleProp,
+  type ImageStyle,
+  type TextStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -30,6 +34,30 @@ export function shoeEmoji(shoe: Pick<Shoe, 'shoeType' | 'isBoots'>): string {
   if (/loafer|oxford|dress|derby/.test(t)) return '👞';
   if (/ballet|flat/.test(t)) return '🩰';
   return '👟';
+}
+
+const API_ORIGIN = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+
+/** Shows the shoe's processed photo when available, otherwise its emoji. */
+export function ShoeImage({
+  shoe,
+  imageStyle,
+  emojiStyle,
+}: {
+  shoe: Pick<Shoe, 'shoeType' | 'isBoots' | 'imagePath'>;
+  imageStyle: StyleProp<ImageStyle>;
+  emojiStyle: StyleProp<TextStyle>;
+}) {
+  if (shoe.imagePath) {
+    return (
+      <Image
+        source={{ uri: `${API_ORIGIN}${shoe.imagePath}` }}
+        style={imageStyle}
+        resizeMode="cover"
+      />
+    );
+  }
+  return <Text style={emojiStyle}>{shoeEmoji(shoe)}</Text>;
 }
 
 export function AppHeader() {

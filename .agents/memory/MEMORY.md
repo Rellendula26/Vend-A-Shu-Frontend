@@ -1,1 +1,2 @@
 - [VAS API contract decision](vas-api-contract.md) — rebuilt API is camelCase, not the original Flask snake_case; boots/status rules enforced server-side.
+- [On-server background removal setup](imgly-bg-removal-setup.md) — @imgly/background-removal-node needs esbuild externals, direct onnxruntime-node dep, and a sharp override under pnpm.

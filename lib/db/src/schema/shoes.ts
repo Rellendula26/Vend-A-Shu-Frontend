@@ -26,6 +26,7 @@ export const shoesTable = pgTable("shoes", {
   binLocation: text("bin_location").notNull(),
   isBoots: boolean("is_boots").notNull().default(false),
   imagePath: text("image_path"),
+  photoData: text("photo_data"),
   labelText: text("label_text"),
   status: text("status").notNull().default("stored"),
   createdAt: timestamp("created_at", { withTimezone: true })

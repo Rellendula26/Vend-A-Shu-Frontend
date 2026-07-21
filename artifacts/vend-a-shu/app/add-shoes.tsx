@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   StyleSheet,
@@ -25,11 +26,15 @@ import {
 import {
   useAddShoe,
   useListAvailableBins,
+  useListPhotoBackgrounds,
+  useProcessPhoto,
   getListShoesQueryKey,
   getListAvailableBinsQueryKey,
   getListBinsQueryKey,
 } from '@workspace/api-client-react';
 import type { Bin } from '@workspace/api-client-react';
+
+const API_ORIGIN = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
 const SEASONS = ['Winter', 'Summer', 'Spring', 'Fall', 'All'] as const;
 const SUBSECTIONS = ['SS-A', 'SS-B', 'SS-C', 'SS-D', 'SS-E', 'SS-F'] as const;
@@ -50,7 +55,9 @@ export default function AddShoes() {
   const queryClient = useQueryClient();
 
   const [step, setStep] = useState(1);
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [rawBase64, setRawBase64] = useState<string | null>(null);
+  const [processedBase64, setProcessedBase64] = useState<string | null>(null);
+  const [chosenBg, setChosenBg] = useState<string>('white');
   const [shoeType, setShoeType] = useState('');
   const [construction, setConstruction] = useState('');
   const [season, setSeason] = useState<(typeof SEASONS)[number] | ''>('');
@@ -67,6 +74,58 @@ export default function AddShoes() {
   });
 
   const addShoe = useAddShoe();
+  const processPhoto = useProcessPhoto();
+  const { data: backgrounds } = useListPhotoBackgrounds({
+    query: { enabled: step === 1, queryKey: ['photo-backgrounds'] },
+  });
+
+  const runProcess = (base64: string, background: string) => {
+    processPhoto.mutate(
+      { data: { imageBase64: base64, background } },
+      {
+        onSuccess: r => setProcessedBase64(r.imageBase64),
+        onError: err =>
+          Alert.alert(
+            'Background removal failed',
+            String((err as Error).message ?? err),
+          ),
+      },
+    );
+  };
+
+  const capture = async (fromCamera: boolean) => {
+    const options = {
+      mediaTypes: ['images'] as ImagePicker.MediaType[],
+      quality: 0.8,
+      base64: true,
+      allowsEditing: true,
+    };
+    let result: ImagePicker.ImagePickerResult;
+    if (fromCamera) {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Camera permission is needed to take a photo.');
+        return;
+      }
+      result = await ImagePicker.launchCameraAsync(options);
+    } else {
+      result = await ImagePicker.launchImageLibraryAsync(options);
+    }
+    if (!result.canceled && result.assets[0]?.base64) {
+      const b64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      setRawBase64(b64);
+      setProcessedBase64(null);
+      runProcess(b64, chosenBg);
+    }
+  };
+
+  const pickBackground = (bg: string) => {
+    setChosenBg(bg);
+    if (rawBase64) {
+      setProcessedBase64(null);
+      runProcess(rawBase64, bg);
+    }
+  };
 
   const binsInSubsection = useMemo(() => {
     const list = (availableBins ?? []).filter(
@@ -77,16 +136,6 @@ export default function AddShoes() {
 
   const eligible = (b: Bin) =>
     isBoots ? b.binLocation === 'FB' : b.binLocation !== 'FB';
-
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
-    }
-  };
 
   const submit = () => {
     if (!currentUser || !selectedBin) return;
@@ -103,6 +152,7 @@ export default function AddShoes() {
           binCol: selectedBin.binCol,
           binRow: selectedBin.binRow,
           binLocation: selectedBin.binLocation,
+          ...(processedBase64 ? { photoBase64: processedBase64 } : {}),
         },
       },
       {
@@ -249,25 +299,14 @@ export default function AddShoes() {
           <Text style={[styles.cursiveTitle, { color: colors.navy }]}>
             Add Shoes or Other Items
           </Text>
-          <TouchableOpacity
-            style={[styles.uploadBox, { borderColor: colors.border }]}
-            onPress={pickImage}
-            testID="upload-image"
-          >
-            {imageUri ? (
-              <Image source={{ uri: imageUri }} style={styles.uploadPreview} />
-            ) : (
-              <>
-                <Feather name="upload" size={28} color={colors.primary} />
-                <Text style={[styles.uploadText, { color: colors.primary }]}>
-                  Tap to add a photo
-                </Text>
-                <Text style={[styles.uploadSub, { color: colors.mutedForeground }]}>
-                  Optional — from your library
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
+          {processedBase64 ? (
+            <View style={[styles.uploadBox, { borderColor: colors.border }]}>
+              <Image source={{ uri: processedBase64 }} style={styles.uploadPreview} />
+              <Text style={[styles.uploadSub, { color: colors.mutedForeground }]}>
+                Photo ready — edit it in the previous step
+              </Text>
+            </View>
+          ) : null}
           <TextInput
             style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.navy }]}
             placeholder="Shoe Type (e.g. Sneakers, Heels, Boots)"
@@ -328,6 +367,7 @@ export default function AddShoes() {
   }
 
   // Step 1 — photo studio
+  const isProcessing = processPhoto.isPending;
   return (
     <View style={containerStyle}>
       <BackHeader onBack={() => router.back()} />
@@ -337,16 +377,111 @@ export default function AddShoes() {
         <Text style={[styles.cursiveTitle, { color: colors.navy }]}>
           Photo Studio
         </Text>
-        <View style={[styles.studioBox, { backgroundColor: colors.card }]}>
-          <View style={[styles.studioIcon, { backgroundColor: colors.accent }]}>
-            <Feather name="camera" size={44} color={colors.navy} />
+
+        {rawBase64 ? (
+          <View style={[styles.studioBox, { backgroundColor: colors.card }]}>
+            {isProcessing ? (
+              <View style={styles.processingBox}>
+                <ActivityIndicator color={colors.primary} size="large" />
+                <Text style={[styles.studioText, { color: colors.mutedForeground }]}>
+                  Removing the background…
+                </Text>
+              </View>
+            ) : (
+              <Image
+                source={{ uri: processedBase64 ?? rawBase64 }}
+                style={styles.photoPreview}
+                resizeMode="contain"
+              />
+            )}
           </View>
-          <Text style={[styles.studioText, { color: colors.mutedForeground }]}>
-            Open the top-center bin, set up the screen and selfie-stick, and
-            place the item to be photographed on the platform, as shown.
-          </Text>
+        ) : (
+          <View style={[styles.studioBox, { backgroundColor: colors.card }]}>
+            <View style={[styles.studioIcon, { backgroundColor: colors.accent }]}>
+              <Feather name="camera" size={44} color={colors.navy} />
+            </View>
+            <Text style={[styles.studioText, { color: colors.mutedForeground }]}>
+              Snap a photo of your shoes — we'll automatically cut out the
+              background so they look studio-ready.
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.captureRow}>
+          <TouchableOpacity
+            style={[styles.captureBtn, { backgroundColor: colors.navy }]}
+            onPress={() => capture(true)}
+            disabled={isProcessing}
+            testID="take-photo"
+          >
+            <Feather name="camera" size={18} color="#FFF" />
+            <Text style={styles.captureBtnText}>Take Photo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.captureBtn, { backgroundColor: colors.navySoft }]}
+            onPress={() => capture(false)}
+            disabled={isProcessing}
+            testID="pick-photo"
+          >
+            <Feather name="image" size={18} color="#FFF" />
+            <Text style={styles.captureBtnText}>From Library</Text>
+          </TouchableOpacity>
         </View>
-        <OrangeButton title="Continue" onPress={() => setStep(2)} testID="continue-to-form" />
+
+        {rawBase64 ? (
+          <>
+            <Text style={[styles.bgTitle, { color: colors.navy }]}>
+              Choose a background
+            </Text>
+            <View style={styles.bgRow}>
+              <TouchableOpacity
+                style={[
+                  styles.bgSwatch,
+                  {
+                    backgroundColor: '#FFFFFF',
+                    borderColor: chosenBg === 'white' ? colors.primary : colors.border,
+                    borderWidth: chosenBg === 'white' ? 3 : 1,
+                  },
+                ]}
+                onPress={() => pickBackground('white')}
+                disabled={isProcessing}
+                testID="bg-white"
+              >
+                <Text style={[styles.bgSwatchLabel, { color: colors.navy }]}>White</Text>
+              </TouchableOpacity>
+              {(backgrounds ?? []).map(bg => (
+                <TouchableOpacity
+                  key={bg.id}
+                  style={[
+                    styles.bgSwatch,
+                    {
+                      borderColor: chosenBg === bg.id ? colors.primary : colors.border,
+                      borderWidth: chosenBg === bg.id ? 3 : 1,
+                    },
+                  ]}
+                  onPress={() => pickBackground(bg.id)}
+                  disabled={isProcessing}
+                  testID={`bg-${bg.id}`}
+                >
+                  <Image
+                    source={{ uri: `${API_ORIGIN}${bg.url}` }}
+                    style={styles.bgSwatchImage}
+                  />
+                  <Text style={[styles.bgSwatchLabel, { color: colors.navy }]} numberOfLines={1}>
+                    {bg.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        ) : null}
+
+        <OrangeButton
+          title={rawBase64 ? 'Continue' : 'Continue without photo'}
+          onPress={() => setStep(2)}
+          disabled={isProcessing}
+          testID="continue-to-form"
+        />
         <GhostButton title="Cancel" onPress={() => router.back()} />
       </KeyboardAwareScrollViewCompat>
     </View>
@@ -382,6 +517,30 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   uploadPreview: { width: 140, height: 140, borderRadius: 8 },
+  photoPreview: { width: '100%', height: 220, borderRadius: 8 },
+  processingBox: { alignItems: 'center', gap: 12, paddingVertical: 40 },
+  captureRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  captureBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 14,
+  },
+  captureBtnText: { color: '#FFF', fontFamily: 'Inter_600SemiBold', fontSize: 14 },
+  bgTitle: { fontSize: 16, fontFamily: 'Inter_700Bold', marginBottom: 10 },
+  bgRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  bgSwatch: {
+    width: 74,
+    borderRadius: 10,
+    overflow: 'hidden',
+    alignItems: 'center',
+    paddingBottom: 4,
+  },
+  bgSwatchImage: { width: '100%', height: 52 },
+  bgSwatchLabel: { fontSize: 10, fontFamily: 'Inter_500Medium', marginTop: 3 },
   uploadText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   uploadSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   input: {

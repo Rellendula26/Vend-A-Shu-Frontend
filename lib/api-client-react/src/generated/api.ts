@@ -25,6 +25,9 @@ import type {
   HealthStatus,
   ListShoesParams,
   MessageResponse,
+  PhotoBackground,
+  ProcessPhotoRequest,
+  ProcessPhotoResult,
   ReturnRequest,
   Shoe,
   ShoeInput,
@@ -744,6 +747,154 @@ export function useListAvailableBins<TData = Awaited<ReturnType<typeof listAvail
 
 
 
+
+export const getListPhotoBackgroundsUrl = () => {
+
+
+
+
+  return `/api/photos/backgrounds`
+}
+
+/**
+ * @summary List premade photo backgrounds
+ */
+export const listPhotoBackgrounds = async ( options?: RequestInit): Promise<PhotoBackground[]> => {
+
+  return customFetch<PhotoBackground[]>(getListPhotoBackgroundsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPhotoBackgroundsQueryKey = () => {
+    return [
+    `/api/photos/backgrounds`
+    ] as const;
+    }
+
+
+export const getListPhotoBackgroundsQueryOptions = <TData = Awaited<ReturnType<typeof listPhotoBackgrounds>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPhotoBackgrounds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPhotoBackgroundsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPhotoBackgrounds>>> = ({ signal }) => listPhotoBackgrounds({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPhotoBackgrounds>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPhotoBackgroundsQueryResult = NonNullable<Awaited<ReturnType<typeof listPhotoBackgrounds>>>
+export type ListPhotoBackgroundsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List premade photo backgrounds
+ */
+
+export function useListPhotoBackgrounds<TData = Awaited<ReturnType<typeof listPhotoBackgrounds>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPhotoBackgrounds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPhotoBackgroundsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getProcessPhotoUrl = () => {
+
+
+
+
+  return `/api/photos/process`
+}
+
+/**
+ * @summary Remove the background from a shoe photo and composite it onto a backdrop
+ */
+export const processPhoto = async (processPhotoRequest: ProcessPhotoRequest, options?: RequestInit): Promise<ProcessPhotoResult> => {
+
+  return customFetch<ProcessPhotoResult>(getProcessPhotoUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(processPhotoRequest)
+  }
+);}
+
+
+
+
+
+export const getProcessPhotoMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof processPhoto>>, TError,{data: BodyType<ProcessPhotoRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof processPhoto>>, TError,{data: BodyType<ProcessPhotoRequest>}, TContext> => {
+
+const mutationKey = ['processPhoto'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof processPhoto>>, {data: BodyType<ProcessPhotoRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  processPhoto(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ProcessPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof processPhoto>>>
+    export type ProcessPhotoMutationBody = BodyType<ProcessPhotoRequest>
+    export type ProcessPhotoMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Remove the background from a shoe photo and composite it onto a backdrop
+ */
+export const useProcessPhoto = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof processPhoto>>, TError,{data: BodyType<ProcessPhotoRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof processPhoto>>,
+        TError,
+        {data: BodyType<ProcessPhotoRequest>},
+        TContext
+      > => {
+      return useMutation(getProcessPhotoMutationOptions(options));
+    }
 
 export const getVendShoeUrl = () => {
 

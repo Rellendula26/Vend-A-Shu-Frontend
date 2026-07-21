@@ -31,8 +31,41 @@ function serializeUser(u: User) {
   return { ...u, createdAt: u.createdAt?.toISOString() ?? null };
 }
 
-function serializeShoe(s: Shoe) {
+// Explicit projection that excludes the photoData blob — list/detail reads
+// must never drag base64 image data out of the DB.
+const shoeColumns = {
+  id: shoesTable.id,
+  userId: shoesTable.userId,
+  shoeType: shoesTable.shoeType,
+  construction: shoesTable.construction,
+  season: shoesTable.season,
+  color: shoesTable.color,
+  designer: shoesTable.designer,
+  subsection: shoesTable.subsection,
+  binCol: shoesTable.binCol,
+  binRow: shoesTable.binRow,
+  binLocation: shoesTable.binLocation,
+  isBoots: shoesTable.isBoots,
+  labelText: shoesTable.labelText,
+  status: shoesTable.status,
+  imagePath: shoesTable.imagePath,
+  createdAt: shoesTable.createdAt,
+} as const;
+
+function serializeShoe(s: Omit<Shoe, "photoData">) {
   return { ...s, createdAt: s.createdAt?.toISOString() ?? null };
+}
+
+// Accept only reasonably-sized JPEG/PNG data URIs for stored shoe photos.
+const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
+function validatePhotoBase64(input: string): string | null {
+  if (!/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/]+=*$/.test(input)) {
+    return "photoBase64 must be a JPEG or PNG data URI";
+  }
+  if (input.length > (MAX_PHOTO_BYTES * 4) / 3 + 64) {
+    return "Photo is too large (max 3MB)";
+  }
+  return null;
 }
 
 function serializeBin(b: Bin) {
@@ -81,7 +114,7 @@ router.get("/shoes", async (req, res): Promise<void> => {
       ? and(ne(shoesTable.status, "removed"), eq(shoesTable.userId, userId))
       : ne(shoesTable.status, "removed");
   const shoes = await db
-    .select()
+    .select(shoeColumns)
     .from(shoesTable)
     .where(where)
     .orderBy(desc(shoesTable.createdAt));
@@ -95,7 +128,7 @@ router.get("/shoes/:id", async (req, res): Promise<void> => {
     return;
   }
   const [shoe] = await db
-    .select()
+    .select(shoeColumns)
     .from(shoesTable)
     .where(eq(shoesTable.id, params.data.id));
   if (!shoe) {
@@ -107,6 +140,13 @@ router.get("/shoes/:id", async (req, res): Promise<void> => {
 
 router.post("/shoes", async (req, res): Promise<void> => {
   const parsed = AddShoeBody.safeParse(req.body);
+  if (parsed.success && parsed.data.photoBase64) {
+    const photoError = validatePhotoBase64(parsed.data.photoBase64);
+    if (photoError) {
+      res.status(400).json({ error: photoError });
+      return;
+    }
+  }
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -171,12 +211,21 @@ router.post("/shoes", async (req, res): Promise<void> => {
           isBoots,
           labelText: data.labelText ?? "",
           status: "stored",
+          photoData: data.photoBase64 ?? null,
         })
         .returning();
       await tx
         .update(binsTable)
         .set({ shoeId: inserted!.id })
         .where(eq(binsTable.id, bin.id));
+      if (data.photoBase64) {
+        const [withPath] = await tx
+          .update(shoesTable)
+          .set({ imagePath: `/api/shoes/${inserted!.id}/photo` })
+          .where(eq(shoesTable.id, inserted!.id))
+          .returning();
+        return withPath!;
+      }
       return inserted!;
     });
     res.status(201).json(AddShoeResponse.parse(serializeShoe(shoe)));
@@ -212,6 +261,29 @@ router.delete("/shoes/:id", async (req, res): Promise<void> => {
     .set({ status: "available", shoeId: null })
     .where(eq(binsTable.shoeId, shoe.id));
   res.json(RemoveShoeResponse.parse({ message: "Shoe permanently removed" }));
+});
+
+// Shoe photo (binary, outside the JSON API)
+router.get("/shoes/:id/photo", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const [shoe] = await db
+    .select({ photoData: shoesTable.photoData })
+    .from(shoesTable)
+    .where(eq(shoesTable.id, id));
+  if (!shoe?.photoData) {
+    res.status(404).json({ error: "No photo for this shoe" });
+    return;
+  }
+  const match = /^data:(image\/[a-zA-Z+]+);base64,(.*)$/.exec(shoe.photoData);
+  const mime = match ? match[1]! : "image/jpeg";
+  const data = Buffer.from(match ? match[2]! : shoe.photoData, "base64");
+  res.setHeader("Content-Type", mime);
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.send(data);
 });
 
 // Bins
