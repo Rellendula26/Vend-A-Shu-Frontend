@@ -1,0 +1,209 @@
+from flask import Flask, request, jsonify
+from database import get_db, init_db
+from hardware import init_hardware, vend_bin, close_bin
+import os
+
+app = Flask(__name__)
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'images')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+@app.route('/api/status', methods=['GET'])
+def status():
+    return jsonify({'status': 'ok', 'message': 'VendAShu server running'})
+
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    conn = get_db()
+    users = conn.execute('SELECT * FROM users ORDER BY name').fetchall()
+    conn.close()
+    return jsonify([dict(u) for u in users])
+
+@app.route('/api/users', methods=['POST'])
+def create_user():
+    data = request.json
+    name = data.get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'Name required'}), 400
+    try:
+        conn = get_db()
+        conn.execute('INSERT INTO users (name) VALUES (?)', (name,))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': f'User {name} created'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/bins', methods=['GET'])
+def get_bins():
+    conn = get_db()
+    bins = conn.execute('SELECT * FROM bins ORDER BY subsection, bin_row').fetchall()
+    conn.close()
+    return jsonify([dict(b) for b in bins])
+
+@app.route('/api/bins/available', methods=['GET'])
+def get_available_bins():
+    conn = get_db()
+    bins = conn.execute(
+        'SELECT * FROM bins WHERE status = ? ORDER BY subsection, bin_row',
+        ('available',)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(b) for b in bins])
+
+@app.route('/api/shoes', methods=['GET'])
+def get_shoes():
+    user_id = request.args.get('user_id')
+    conn = get_db()
+    if user_id:
+        shoes = conn.execute(
+            'SELECT * FROM shoes WHERE user_id = ? AND status != ? ORDER BY created_at DESC',
+            (user_id, 'removed')
+        ).fetchall()
+    else:
+        shoes = conn.execute(
+            'SELECT * FROM shoes WHERE status != ? ORDER BY created_at DESC',
+            ('removed',)
+        ).fetchall()
+    conn.close()
+    return jsonify([dict(s) for s in shoes])
+
+@app.route('/api/shoes/<int:shoe_id>', methods=['GET'])
+def get_shoe(shoe_id):
+    conn = get_db()
+    shoe = conn.execute('SELECT * FROM shoes WHERE id = ?', (shoe_id,)).fetchone()
+    conn.close()
+    if not shoe:
+        return jsonify({'error': 'Shoe not found'}), 404
+    return jsonify(dict(shoe))
+
+@app.route('/api/shoes', methods=['POST'])
+def add_shoe():
+    data = request.json
+    required = ['user_id', 'shoe_type', 'subsection', 'bin_col', 'bin_row', 'bin_location']
+    for field in required:
+        if not data.get(field):
+            return jsonify({'error': f'{field} required'}), 400
+
+    is_boots = 1 if 'boot' in data.get('shoe_type', '').lower() else 0
+
+    conn = get_db()
+    try:
+        cursor = conn.execute('''
+            INSERT INTO shoes
+            (user_id, shoe_type, construction, season, color, designer,
+             subsection, bin_col, bin_row, bin_location, is_boots, label_text, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'stored')
+        ''', (
+            data['user_id'],
+            data['shoe_type'],
+            data.get('construction', ''),
+            data.get('season', ''),
+            data.get('color', ''),
+            data.get('designer', ''),
+            data['subsection'],
+            data['bin_col'],
+            data['bin_row'],
+            data['bin_location'],
+            is_boots,
+            data.get('label_text', '')
+        ))
+        shoe_id = cursor.lastrowid
+
+        conn.execute('''
+            UPDATE bins SET status = 'occupied', shoe_id = ?
+            WHERE subsection = ? AND bin_col = ? AND bin_row = ? AND bin_location = ?
+        ''', (shoe_id, data['subsection'], data['bin_col'], data['bin_row'], data['bin_location']))
+
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Shoe added', 'shoe_id': shoe_id}), 201
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shoes/<int:shoe_id>', methods=['DELETE'])
+def remove_shoe(shoe_id):
+    conn = get_db()
+    shoe = conn.execute('SELECT * FROM shoes WHERE id = ?', (shoe_id,)).fetchone()
+    if not shoe:
+        conn.close()
+        return jsonify({'error': 'Shoe not found'}), 404
+
+    conn.execute('UPDATE shoes SET status = ? WHERE id = ?', ('removed', shoe_id))
+    conn.execute('''
+        UPDATE bins SET status = 'available', shoe_id = NULL
+        WHERE shoe_id = ?
+    ''', (shoe_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Shoe permanently removed'})
+
+@app.route('/api/vend', methods=['POST'])
+def vend():
+    data = request.json
+    shoe_id = data.get('shoe_id')
+    if not shoe_id:
+        return jsonify({'error': 'shoe_id required'}), 400
+
+    conn = get_db()
+    shoe = conn.execute('SELECT * FROM shoes WHERE id = ?', (shoe_id,)).fetchone()
+    if not shoe:
+        conn.close()
+        return jsonify({'error': 'Shoe not found'}), 404
+
+    shoe = dict(shoe)
+    success = vend_bin(shoe['subsection'], shoe['bin_row'])
+
+    conn.execute('UPDATE shoes SET status = ? WHERE id = ?', ('vended', shoe_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        'message': 'Bin ejected',
+        'subsection': shoe['subsection'],
+        'bin_col': shoe['bin_col'],
+        'bin_row': shoe['bin_row'],
+        'bin_location': shoe['bin_location'],
+        'hardware': success
+    })
+
+@app.route('/api/vend/done', methods=['POST'])
+def vend_done():
+    data = request.json
+    shoe_id = data.get('shoe_id')
+    permanent = data.get('permanent', False)
+
+    conn = get_db()
+    shoe = conn.execute('SELECT * FROM shoes WHERE id = ?', (shoe_id,)).fetchone()
+    if not shoe:
+        conn.close()
+        return jsonify({'error': 'Shoe not found'}), 404
+
+    shoe = dict(shoe)
+    close_bin(shoe['subsection'], shoe['bin_row'])
+
+    if permanent:
+        conn.execute('UPDATE shoes SET status = ? WHERE id = ?', ('removed', shoe_id))
+        conn.execute('UPDATE bins SET status = ?, shoe_id = NULL WHERE shoe_id = ?', ('available', shoe_id))
+    else:
+        conn.execute('UPDATE shoes SET status = ? WHERE id = ?', ('vended', shoe_id))
+
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Done confirmed'})
+
+@app.route('/api/return', methods=['POST'])
+def return_shoe():
+    data = request.json
+    shoe_id = data.get('shoe_id')
+
+    conn = get_db()
+    conn.execute('UPDATE shoes SET status = ? WHERE id = ?', ('stored', shoe_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Shoe returned to bin'})
+
+if __name__ == '__main__':
+    init_db()
+    init_hardware()
+    app.run(host='0.0.0.0', port=8080, debug=False)
