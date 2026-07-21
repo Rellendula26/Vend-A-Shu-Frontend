@@ -1,0 +1,566 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  TextInput, SafeAreaView, FlatList, Alert, Dimensions
+} from 'react-native';
+
+const { width } = Dimensions.get('window');
+
+const USERS = ['David', 'Jessica', 'Angelica', 'Xavier', 'Emily', 'Justin'];
+
+const SHOES = [
+  { id: '1', type: 'Slip On', construction: 'Canvas', season: 'Summer', color: 'Grey', designer: 'Sketchers', bin: 'Master Bottom', col: 'C2', row: 'R6', location: 'Right', emoji: '👟' },
+  { id: '2', type: 'Heels', construction: 'Leather', season: 'Winter', color: 'Black', designer: 'Gucci', bin: 'Master Top', col: 'C1', row: 'R2', location: 'Left', emoji: '👠' },
+  { id: '3', type: 'Sneakers', construction: 'Mesh', season: 'Spring', color: 'White', designer: 'Nike', bin: 'David BR', col: 'C3', row: 'R4', location: 'Right', emoji: '👟' },
+  { id: '4', type: 'Boots', construction: 'Suede', season: 'Fall', color: 'Brown', designer: 'Timberland', bin: 'Jessica BR', col: 'C1', row: 'R1', location: 'Full Bin', emoji: '🥾' },
+  { id: '5', type: 'Sandals', construction: 'Rubber', season: 'Summer', color: 'Tan', designer: 'Birkenstock', bin: 'Xavier BR', col: 'C2', row: 'R3', location: 'Left', emoji: '👡' },
+  { id: '6', type: 'Loafers', construction: 'Leather', season: 'All', color: 'Navy', designer: 'Cole Haan', bin: 'Master Bottom', col: 'C1', row: 'R5', location: 'Right', emoji: '👞' },
+];
+
+const VAS_SYSTEMS = ['Master Top', 'Master Bottom', 'David BR', 'Jessica BR', 'Xavier BR'];
+const ORANGE = '#F97316';
+const NAVY = '#1E3A5F';
+const LIGHT_BG = '#F8F9FA';
+const WHITE = '#FFFFFF';
+
+export default function App() {
+  const [screen, setScreen] = useState('splash');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [shoes, setShoes] = useState(SHOES);
+  const [params, setParams] = useState({});
+
+  const navigate = (screenName, p = {}) => { setParams(p); setScreen(screenName); };
+
+  const screens = {
+    splash: <SplashScreen navigate={navigate} />,
+    onboarding: <OnboardingScreen navigate={navigate} />,
+    connect: <ConnectScreen navigate={navigate} />,
+    selectUser: <SelectUserScreen navigate={navigate} setCurrentUser={setCurrentUser} />,
+    home: <HomeScreen navigate={navigate} currentUser={currentUser} />,
+    addShoes: <AddShoesScreen navigate={navigate} shoes={shoes} setShoes={setShoes} />,
+    vendShoes: <VendShoesScreen navigate={navigate} shoes={shoes} setShoes={setShoes} currentUser={currentUser} />,
+    returnShoes: <ReturnShoesScreen navigate={navigate} shoes={shoes} setShoes={setShoes} />,
+  };
+
+  return screens[screen] || screens['home'];
+}
+
+function SplashScreen({ navigate }) {
+  useEffect(() => { const t = setTimeout(() => navigate('onboarding'), 3000); return () => clearTimeout(t); }, []);
+  return (
+    <View style={styles.splashContainer}>
+      <View style={styles.splashLogo}>
+        <Text style={styles.splashEmoji}>👠</Text>
+        <View>
+          <Text style={styles.splashVenda}>VENDA</Text>
+          <Text style={styles.splashShu}>SHU</Text>
+        </View>
+      </View>
+      <View style={styles.splashWave} />
+    </View>
+  );
+}
+
+function OnboardingScreen({ navigate }) {
+  const [page, setPage] = useState(0);
+  const slides = [
+    { icon: '📶', title: 'Connect to Wifi', desc: 'Make sure you are connected to your Wifi Router to continue using this app.' },
+    { icon: '👤', title: 'Create Users', desc: 'Connect to your VAS database and create users who can have access to the VAS system.' },
+    { icon: '👟', title: 'Select User and Get Started!', desc: 'Select your username from the dropdown menu on the start page and get started.' },
+    { icon: '📦', title: 'Know your Bins and Locations!', desc: 'Each bin can hold one, two or three items. Locations are labeled Left Front, Rear, and Right Front.' },
+  ];
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.onboardingCard}>
+        <Text style={styles.onboardingIcon}>{slides[page].icon}</Text>
+        <Text style={styles.onboardingTitle}>{slides[page].title}</Text>
+        <Text style={styles.onboardingDesc}>{slides[page].desc}</Text>
+        <View style={styles.dots}>
+          {slides.map((_, i) => <View key={i} style={[styles.dot, i === page && styles.dotActive]} />)}
+        </View>
+      </View>
+      <View style={styles.onboardingButtons}>
+        {page < slides.length - 1 ? (
+          <>
+            <OrangeButton title="Get Started" onPress={() => setPage(page + 1)} />
+            {page > 0 && <GhostButton title="Back" onPress={() => setPage(page - 1)} />}
+          </>
+        ) : (
+          <>
+            <OrangeButton title="Get Started" onPress={() => navigate('connect')} />
+            <GhostButton title="Back" onPress={() => setPage(page - 1)} />
+          </>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function ConnectScreen({ navigate }) {
+  const [ip, setIp] = useState('');
+  const [port, setPort] = useState('');
+  return (
+    <SafeAreaView style={styles.container}>
+      <AppHeader />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.screenTitle}>Connect to{'\n'}Database</Text>
+        <Text style={styles.connectEmoji}>👨‍💻</Text>
+        <TextInput style={styles.input} placeholder="Enter IP Address" value={ip} onChangeText={setIp} keyboardType="numeric" />
+        <TextInput style={styles.input} placeholder="Port Address" value={port} onChangeText={setPort} keyboardType="numeric" />
+        <OrangeButton title="Connect" onPress={() => navigate('selectUser')} />
+        <View style={styles.helpBox}>
+          <Text style={styles.helpTitle}>Where can I find my IP?</Text>
+          <Text style={styles.helpText}>You can find the IP and port of your VAS database on the webpage for VAS you used to create the users.</Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function SelectUserScreen({ navigate, setCurrentUser }) {
+  const [selected, setSelected] = useState('');
+  const [open, setOpen] = useState(false);
+  const [remember, setRemember] = useState(true);
+  return (
+    <SafeAreaView style={styles.container}>
+      <AppHeader />
+      <View style={styles.welcomeCard}>
+        <Text style={styles.welcomeHi}>Hi!</Text>
+        <Text style={styles.welcomeTitle}>Welcome</Text>
+        <Text style={styles.welcomeSub}>I am waiting for you, please enter your details</Text>
+        <TouchableOpacity style={styles.dropdown} onPress={() => setOpen(!open)}>
+          <Text style={selected ? styles.dropdownSelected : styles.dropdownPlaceholder}>{selected || 'Select User'}</Text>
+          <Text>▼</Text>
+        </TouchableOpacity>
+        {open && (
+          <View style={styles.dropdownList}>
+            {USERS.map(u => (
+              <TouchableOpacity key={u} style={styles.dropdownItem} onPress={() => { setSelected(u); setOpen(false); }}>
+                <Text style={styles.dropdownItemText}>{u}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+        <View style={styles.rememberRow}>
+          <TouchableOpacity onPress={() => setRemember(!remember)} style={[styles.toggle, remember && styles.toggleOn]}>
+            <View style={[styles.toggleThumb, remember && styles.toggleThumbOn]} />
+          </TouchableOpacity>
+          <Text style={styles.rememberText}>Remember me</Text>
+        </View>
+        <OrangeButton title="Go to my VAS" onPress={() => { if (selected) { setCurrentUser(selected); navigate('home'); } else { Alert.alert('Please select a user'); } }} />
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function HomeScreen({ navigate, currentUser }) {
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.homeHeader}>
+        <AppHeader />
+        <View style={styles.userRow}>
+          <View style={styles.avatar}><Text style={styles.avatarText}>{currentUser?.[0]}</Text></View>
+        </View>
+      </View>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.helloScript}>Hello {currentUser},</Text>
+        <Text style={styles.helloSub}>Hope you're doing well!</Text>
+        <View style={styles.menuCard}>
+          <Text style={styles.menuTitle}>Where do you want{'\n'}to go?</Text>
+          <View style={styles.menuGrid}>
+            <MenuButton icon="➕" label="Add Shoes" onPress={() => navigate('addShoes')} />
+            <MenuButton icon="👟" label="Vend Shoes" onPress={() => navigate('vendShoes')} />
+            <MenuButton icon="🔄" label="Return Shoes" onPress={() => navigate('returnShoes')} />
+            <MenuButton icon="⚙️" label="Options" onPress={() => Alert.alert('Options', 'No options currently defined.')} />
+          </View>
+        </View>
+      </ScrollView>
+      <TouchableOpacity style={styles.closeApp} onPress={() => navigate('selectUser')}>
+        <Text style={styles.closeAppText}>Close App</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
+  );
+}
+
+function AddShoesScreen({ navigate, shoes, setShoes }) {
+  const [step, setStep] = useState(1);
+  const [shoeType, setShoeType] = useState('');
+  const [construction, setConstruction] = useState('');
+  const [season, setSeason] = useState('');
+  const [color, setColor] = useState('');
+  const [designer, setDesigner] = useState('');
+  const [selectedBin, setSelectedBin] = useState(null);
+  const [selectedVAS, setSelectedVAS] = useState('');
+  const [vasOpen, setVasOpen] = useState(false);
+  const [seasonOpen, setSeasonOpen] = useState(false);
+  const seasons = ['Winter', 'Summer', 'Spring', 'Fall', 'All'];
+  const isBoots = /boots?/i.test(shoeType);
+  const binGrid = Array.from({ length: 60 }, (_, i) => ({ id: i, occupied: [2,5,11,18,23,30,35,42].includes(i) }));
+
+  const handleReserveBin = () => {
+    const newShoe = { id: Date.now().toString(), type: shoeType, construction, season, color, designer, bin: selectedVAS || 'Master Bottom', col: `C${Math.floor(selectedBin / 10) + 1}`, row: `R${(selectedBin % 10) + 1}`, location: isBoots ? 'Full Bin' : 'Right', emoji: isBoots ? '🥾' : '👟' };
+    setShoes([...shoes, newShoe]);
+    setStep(4);
+  };
+
+  if (step === 4) return (
+    <SafeAreaView style={styles.container}>
+      <AppHeader />
+      <View style={styles.successContainer}>
+        <View style={styles.successCircle}><Text style={styles.successCheck}>✓</Text></View>
+        <Text style={styles.successTitle}>Shoes Added!</Text>
+        <Text style={styles.successSub}>{selectedVAS} : {`C${Math.floor((selectedBin||0)/10)+1}`} : {`R${((selectedBin||0)%10)+1}`}</Text>
+        <View style={{ marginTop: 40, width: '100%' }}><OrangeButton title="Go to Home" onPress={() => navigate('home')} /></View>
+      </View>
+    </SafeAreaView>
+  );
+
+  if (step === 3) return (
+    <SafeAreaView style={styles.container}>
+      <BackHeader title="" onBack={() => setStep(2)} />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.cursiveTitle}>Select location to place the shoes</Text>
+        <TouchableOpacity style={styles.dropdown} onPress={() => setVasOpen(!vasOpen)}>
+          <Text style={selectedVAS ? styles.dropdownSelected : styles.dropdownPlaceholder}>{selectedVAS || 'Select VAS'}</Text>
+          <Text>▼</Text>
+        </TouchableOpacity>
+        {vasOpen && (
+          <View style={styles.dropdownList}>
+            {VAS_SYSTEMS.map(v => (
+              <TouchableOpacity key={v} style={styles.dropdownItem} onPress={() => { setSelectedVAS(v); setVasOpen(false); }}>
+                <Text style={styles.dropdownItemText}>{v}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+        <View style={styles.binGrid}>
+          {binGrid.map(bin => (
+            <TouchableOpacity key={bin.id} style={[styles.binCell, bin.occupied && styles.binOccupied, selectedBin === bin.id && styles.binSelected]} onPress={() => !bin.occupied && setSelectedBin(bin.id)} />
+          ))}
+        </View>
+        <View style={styles.helpBox}>
+          <Text style={styles.helpTitle}>💡 How to Select the Storage Location?</Text>
+          <Text style={styles.helpText}>The app has already auto selected the storage location for you, but you may change it by clicking on a different storage location.</Text>
+        </View>
+        <OrangeButton title="Use Selected Bin" onPress={handleReserveBin} disabled={!selectedBin || !selectedVAS} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+
+  if (step === 2) return (
+    <SafeAreaView style={styles.container}>
+      <BackHeader title="" onBack={() => setStep(1)} />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.cursiveTitle}>Add Shoes or Other Items</Text>
+        <View style={styles.uploadBox}>
+          <Text style={styles.uploadIcon}>⬆️</Text>
+          <Text style={styles.uploadText}>Click to upload image</Text>
+          <Text style={styles.uploadSub}>Maximum file size 20MB</Text>
+        </View>
+        <TextInput style={styles.input} placeholder="Shoe Type" value={shoeType} onChangeText={setShoeType} />
+        <TextInput style={styles.input} placeholder="Construction of Shoes" value={construction} onChangeText={setConstruction} />
+        <TouchableOpacity style={styles.dropdown} onPress={() => setSeasonOpen(!seasonOpen)}>
+          <Text style={season ? styles.dropdownSelected : styles.dropdownPlaceholder}>{season || 'Season of Wear'}</Text>
+          <Text>▼</Text>
+        </TouchableOpacity>
+        {seasonOpen && (
+          <View style={styles.dropdownList}>
+            {seasons.map(s => (
+              <TouchableOpacity key={s} style={styles.dropdownItem} onPress={() => { setSeason(s); setSeasonOpen(false); }}>
+                <Text style={styles.dropdownItemText}>{s}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+        <View style={styles.row}>
+          <TextInput style={[styles.input, { flex: 1, marginRight: 8 }]} placeholder="Shoes Color" value={color} onChangeText={setColor} />
+          <TextInput style={[styles.input, { flex: 1 }]} placeholder="Shoes Designer" value={designer} onChangeText={setDesigner} />
+        </View>
+        <OrangeButton title="Reserve Bin" onPress={() => { if (shoeType) setStep(3); else Alert.alert('Please enter shoe type'); }} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <BackHeader title="" onBack={() => navigate('home')} />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.cursiveTitle}>Photo Studio</Text>
+        <View style={styles.photoStudioBox}>
+          <Text style={styles.photoStudioEmoji}>📦</Text>
+          <Text style={styles.photoStudioText}>Open the top-center bin, set up the screen and selfie-stick, and place the item to be photographed on the platform, as shown.</Text>
+        </View>
+        <OrangeButton title="Continue" onPress={() => setStep(2)} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function VendShoesScreen({ navigate, shoes, setShoes, currentUser }) {
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(null);
+  const [step, setStep] = useState(1);
+  const [filter, setFilter] = useState('');
+  const filtered = shoes.filter(s => s.type.toLowerCase().includes(search.toLowerCase()) || s.color.toLowerCase().includes(search.toLowerCase()) || s.designer.toLowerCase().includes(search.toLowerCase()));
+
+  if (step === 3) return (
+    <SafeAreaView style={styles.container}>
+      <AppHeader />
+      <View style={styles.successContainer}>
+        <View style={styles.vendInstructions}>
+          <Text style={styles.vendInstructTitle}>Open the indicated bin and remove the selected item, then close the bin.</Text>
+          <Text style={styles.vendBinLabel}>{selected?.bin} : {selected?.col} : {selected?.row} : {selected?.location}</Text>
+        </View>
+        <OrangeButton title="Done" onPress={() => { setShoes(shoes.filter(s => s.id !== selected.id)); navigate('home'); }} />
+      </View>
+    </SafeAreaView>
+  );
+
+  if (step === 2 && selected) return (
+    <SafeAreaView style={styles.container}>
+      <BackHeader title="Vend Shoes" onBack={() => setStep(1)} />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.confirmEmoji}>{selected.emoji}</Text>
+        <View style={styles.shoeDetailCard}>
+          <DetailRow label="Shoe Type" value={selected.type} />
+          <DetailRow label="Construction" value={selected.construction} />
+          <DetailRow label="Season of Wear" value={selected.season} />
+          <DetailRow label="Shoe Color" value={selected.color} />
+          <DetailRow label="Designer" value={selected.designer} />
+          <DetailRow label="Location" value={`${selected.bin} : ${selected.col} : ${selected.row}`} />
+        </View>
+        <OrangeButton title="Vend Shoes" onPress={() => setStep(3)} />
+        <View style={{ height: 12 }} />
+        <GhostButton title="Permanently Remove" onPress={() => Alert.alert('Permanently Remove', `Remove ${selected.type} permanently?`, [{ text: 'Cancel' }, { text: 'Yes, Remove', style: 'destructive', onPress: () => { setShoes(shoes.filter(s => s.id !== selected.id)); navigate('home'); } }])} />
+        <View style={{ height: 12 }} />
+        <GhostButton title="Cancel" onPress={() => setStep(1)} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <BackHeader title="Vend Shoes" onBack={() => navigate('home')} />
+      <View style={styles.searchContainer}>
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput style={styles.searchInput} placeholder="Search shoe type" value={search} onChangeText={setSearch} />
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+        {['Season', 'Color', 'Brand', 'Material'].map(f => (
+          <TouchableOpacity key={f} style={[styles.filterChip, filter === f && styles.filterChipActive]} onPress={() => setFilter(filter === f ? '' : f)}>
+            <Text style={[styles.filterChipText, filter === f && styles.filterChipTextActive]}>{f}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+      <FlatList data={filtered} numColumns={3} keyExtractor={i => i.id} contentContainerStyle={styles.shoeGrid} renderItem={({ item }) => (
+        <TouchableOpacity style={styles.shoeThumb} onPress={() => { setSelected(item); setStep(2); }}>
+          <Text style={styles.shoeThumbEmoji}>{item.emoji}</Text>
+          <Text style={styles.shoeThumbLabel}>{item.type}</Text>
+        </TouchableOpacity>
+      )} />
+    </SafeAreaView>
+  );
+}
+
+function ReturnShoesScreen({ navigate, shoes, setShoes }) {
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(null);
+  const filtered = shoes.filter(s => s.type.toLowerCase().includes(search.toLowerCase()));
+
+  if (selected) return (
+    <SafeAreaView style={styles.container}>
+      <BackHeader title="Return Shoes" onBack={() => setSelected(null)} />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.confirmEmoji}>{selected.emoji}</Text>
+        <View style={styles.shoeDetailCard}>
+          <DetailRow label="Shoe Type" value={selected.type} />
+          <DetailRow label="Return to" value={`${selected.bin} : ${selected.col} : ${selected.row}`} />
+          <DetailRow label="Season" value={selected.season} />
+          <DetailRow label="Color" value={selected.color} />
+        </View>
+        <OrangeButton title="Return to this Bin" onPress={() => Alert.alert('Success!', `${selected.type} returned to ${selected.bin}`, [{ text: 'OK', onPress: () => navigate('home') }])} />
+        <View style={{ height: 12 }} />
+        <GhostButton title="Cancel" onPress={() => setSelected(null)} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <BackHeader title="Return Shoes" onBack={() => navigate('home')} />
+      <View style={styles.searchContainer}>
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput style={styles.searchInput} placeholder="Search shoe type" value={search} onChangeText={setSearch} />
+      </View>
+      <FlatList data={filtered} numColumns={3} keyExtractor={i => i.id} contentContainerStyle={styles.shoeGrid} renderItem={({ item }) => (
+        <TouchableOpacity style={styles.shoeThumb} onPress={() => setSelected(item)}>
+          <Text style={styles.shoeThumbEmoji}>{item.emoji}</Text>
+          <Text style={styles.shoeThumbLabel}>{item.type}</Text>
+        </TouchableOpacity>
+      )} />
+    </SafeAreaView>
+  );
+}
+
+function AppHeader() {
+  return (
+    <View style={styles.appHeader}>
+      <Text style={styles.appHeaderEmoji}>👠</Text>
+      <View>
+        <Text style={styles.appHeaderVenda}>VENDA</Text>
+        <Text style={styles.appHeaderShu}>SHU</Text>
+      </View>
+    </View>
+  );
+}
+
+function BackHeader({ title, onBack }) {
+  return (
+    <View style={styles.backHeader}>
+      <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+        <Text style={styles.backBtnText}>‹</Text>
+      </TouchableOpacity>
+      <AppHeader />
+    </View>
+  );
+}
+
+function OrangeButton({ title, onPress, disabled }) {
+  return (
+    <TouchableOpacity style={[styles.orangeBtn, disabled && styles.orangeBtnDisabled]} onPress={onPress} disabled={disabled}>
+      <Text style={styles.orangeBtnText}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function GhostButton({ title, onPress }) {
+  return (
+    <TouchableOpacity style={styles.ghostBtn} onPress={onPress}>
+      <Text style={styles.ghostBtnText}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function MenuButton({ icon, label, onPress }) {
+  return (
+    <TouchableOpacity style={styles.menuBtn} onPress={onPress}>
+      <View style={styles.menuBtnIcon}><Text style={styles.menuBtnEmoji}>{icon}</Text></View>
+      <Text style={styles.menuBtnLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <View style={styles.detailRow}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailValue}>{value}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: LIGHT_BG },
+  scrollContent: { padding: 20, paddingBottom: 40 },
+  splashContainer: { flex: 1, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },
+  splashLogo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  splashEmoji: { fontSize: 48 },
+  splashVenda: { fontSize: 18, color: '#333', letterSpacing: 3 },
+  splashShu: { fontSize: 32, fontWeight: 'bold', color: ORANGE, letterSpacing: 4 },
+  splashWave: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, backgroundColor: '#FDDCBC', borderTopLeftRadius: 80, borderTopRightRadius: 80 },
+  onboardingCard: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  onboardingIcon: { fontSize: 80, marginBottom: 24 },
+  onboardingTitle: { fontSize: 24, fontWeight: 'bold', color: NAVY, textAlign: 'center', marginBottom: 12 },
+  onboardingDesc: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 },
+  dots: { flexDirection: 'row', gap: 8, marginTop: 24 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#DDD' },
+  dotActive: { backgroundColor: ORANGE },
+  onboardingButtons: { padding: 20, gap: 12 },
+  appHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 8 },
+  appHeaderEmoji: { fontSize: 28 },
+  appHeaderVenda: { fontSize: 10, color: '#666', letterSpacing: 2 },
+  appHeaderShu: { fontSize: 16, fontWeight: 'bold', color: NAVY, letterSpacing: 2 },
+  homeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  userRow: { paddingRight: 16 },
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: NAVY, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: WHITE, fontWeight: 'bold', fontSize: 16 },
+  backHeader: { flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE },
+  backBtn: { paddingLeft: 16 },
+  backBtnText: { fontSize: 32, color: NAVY },
+  orangeBtn: { backgroundColor: ORANGE, borderRadius: 8, padding: 16, alignItems: 'center', marginVertical: 4 },
+  orangeBtnDisabled: { backgroundColor: '#CCC' },
+  orangeBtnText: { color: WHITE, fontWeight: 'bold', fontSize: 16 },
+  ghostBtn: { borderWidth: 1.5, borderColor: NAVY, borderRadius: 8, padding: 16, alignItems: 'center', marginVertical: 4 },
+  ghostBtnText: { color: NAVY, fontWeight: '600', fontSize: 16 },
+  screenTitle: { fontSize: 28, fontWeight: 'bold', color: NAVY, marginBottom: 20 },
+  connectEmoji: { fontSize: 80, textAlign: 'center', marginBottom: 20 },
+  input: { backgroundColor: WHITE, borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 14, marginBottom: 12, fontSize: 15 },
+  row: { flexDirection: 'row' },
+  helpBox: { backgroundColor: '#FFF9F0', borderRadius: 8, padding: 16, marginTop: 20, marginBottom: 20 },
+  helpTitle: { fontWeight: 'bold', color: NAVY, marginBottom: 4 },
+  helpText: { color: '#666', fontSize: 13, lineHeight: 20 },
+  welcomeCard: { flex: 1, padding: 24, backgroundColor: '#F0F4FF', margin: 16, borderRadius: 16 },
+  welcomeHi: { fontSize: 36, fontWeight: 'bold', color: NAVY },
+  welcomeTitle: { fontSize: 48, fontWeight: 'bold', color: NAVY, marginBottom: 8 },
+  welcomeSub: { fontSize: 14, color: '#666', marginBottom: 24 },
+  dropdown: { backgroundColor: WHITE, borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 14, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dropdownPlaceholder: { color: '#999', fontSize: 15 },
+  dropdownSelected: { color: NAVY, fontSize: 15, fontWeight: '600' },
+  dropdownList: { backgroundColor: WHITE, borderWidth: 1, borderColor: '#DDD', borderRadius: 8, marginBottom: 12, overflow: 'hidden' },
+  dropdownItem: { padding: 14, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  dropdownItemText: { fontSize: 15, color: NAVY },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
+  toggle: { width: 48, height: 26, borderRadius: 13, backgroundColor: '#DDD', justifyContent: 'center', padding: 2 },
+  toggleOn: { backgroundColor: ORANGE },
+  toggleThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: WHITE },
+  toggleThumbOn: { alignSelf: 'flex-end' },
+  rememberText: { color: '#666', fontSize: 14 },
+  helloScript: { fontSize: 28, color: NAVY, fontStyle: 'italic', marginBottom: 4 },
+  helloSub: { fontSize: 14, color: '#999', marginBottom: 20 },
+  menuCard: { backgroundColor: '#F0F4FF', borderRadius: 16, padding: 20 },
+  menuTitle: { fontSize: 18, fontWeight: 'bold', color: NAVY, marginBottom: 16 },
+  menuGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  menuBtn: { width: (width - 80) / 2, backgroundColor: WHITE, borderRadius: 12, padding: 16, alignItems: 'center' },
+  menuBtnIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: NAVY, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  menuBtnEmoji: { fontSize: 22 },
+  menuBtnLabel: { fontSize: 13, color: NAVY, fontWeight: '600', textAlign: 'center' },
+  closeApp: { padding: 16, alignItems: 'center' },
+  closeAppText: { color: NAVY, textDecorationLine: 'underline', fontSize: 15 },
+  cursiveTitle: { fontSize: 26, fontStyle: 'italic', color: NAVY, marginBottom: 20 },
+  uploadBox: { borderWidth: 2, borderColor: '#DDD', borderStyle: 'dashed', borderRadius: 8, padding: 30, alignItems: 'center', marginBottom: 16 },
+  uploadIcon: { fontSize: 32, marginBottom: 8 },
+  uploadText: { color: ORANGE, fontSize: 14, fontWeight: '600' },
+  uploadSub: { color: '#999', fontSize: 12 },
+  photoStudioBox: { backgroundColor: WHITE, borderRadius: 12, padding: 20, alignItems: 'center', marginBottom: 20 },
+  photoStudioEmoji: { fontSize: 80, marginBottom: 16 },
+  photoStudioText: { color: '#666', textAlign: 'center', lineHeight: 22 },
+  binGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginVertical: 20, justifyContent: 'center' },
+  binCell: { width: 28, height: 28, borderRadius: 4, backgroundColor: '#4A6FA5' },
+  binOccupied: { backgroundColor: '#CCC' },
+  binSelected: { backgroundColor: ORANGE },
+  successContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  successCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  successCheck: { color: WHITE, fontSize: 36, fontWeight: 'bold' },
+  successTitle: { fontSize: 24, fontWeight: 'bold', color: NAVY, marginBottom: 8 },
+  successSub: { color: '#666', fontSize: 14 },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE, margin: 16, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#DDD' },
+  searchIcon: { fontSize: 18, marginRight: 8 },
+  searchInput: { flex: 1, padding: 12, fontSize: 15 },
+  filterRow: { paddingHorizontal: 16, marginBottom: 8, maxHeight: 44 },
+  filterChip: { borderWidth: 1, borderColor: '#DDD', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginRight: 8, backgroundColor: WHITE },
+  filterChipActive: { backgroundColor: NAVY, borderColor: NAVY },
+  filterChipText: { color: '#666', fontSize: 13 },
+  filterChipTextActive: { color: WHITE },
+  shoeGrid: { padding: 12 },
+  shoeThumb: { flex: 1, margin: 4, backgroundColor: WHITE, borderRadius: 8, padding: 12, alignItems: 'center', aspectRatio: 1 },
+  shoeThumbEmoji: { fontSize: 36, marginBottom: 4 },
+  shoeThumbLabel: { fontSize: 11, color: NAVY, textAlign: 'center', fontWeight: '500' },
+  confirmEmoji: { fontSize: 80, textAlign: 'center', marginBottom: 20 },
+  shoeDetailCard: { backgroundColor: WHITE, borderRadius: 12, padding: 20, marginBottom: 20 },
+  detailRow: { marginBottom: 12 },
+  detailLabel: { fontSize: 11, color: '#999', marginBottom: 2 },
+  detailValue: { fontSize: 15, color: NAVY, fontWeight: '600' },
+  vendInstructions: { backgroundColor: WHITE, borderRadius: 12, padding: 20, marginBottom: 24, alignItems: 'center' },
+  vendInstructTitle: { fontSize: 16, color: NAVY, textAlign: 'center', lineHeight: 24, marginBottom: 12 },
+  vendBinLabel: { fontSize: 14, color: ORANGE, fontWeight: 'bold' },
+});
