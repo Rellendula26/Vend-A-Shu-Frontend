@@ -2,7 +2,17 @@ import { Router, type IRouter } from "express";
 import path from "node:path";
 import fs from "node:fs";
 import sharp from "sharp";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 import { removeBackground } from "@imgly/background-removal-node";
+
+// Resolve the library's bundled model/resource files explicitly. In production
+// the process runs from the workspace root, where the library's default
+// relative "node_modules/@imgly/..." lookup does not exist.
+const imglyRequire = createRequire(import.meta.url);
+const IMGLY_PUBLIC_PATH = pathToFileURL(
+  path.join(path.dirname(imglyRequire.resolve("@imgly/background-removal-node")), "/"),
+).href;
 import {
   ListPhotoBackgroundsResponse,
   ProcessPhotoBody,
@@ -107,6 +117,7 @@ router.post("/photos/process", async (req, res): Promise<void> => {
     req.log.info({ bytes: prepared.length, background }, "Removing photo background");
     const cutoutBlob = await removeBackground(
       new Blob([new Uint8Array(prepared)], { type: "image/jpeg" }),
+      { publicPath: IMGLY_PUBLIC_PATH },
     );
     const cutout = Buffer.from(await cutoutBlob.arrayBuffer());
 
