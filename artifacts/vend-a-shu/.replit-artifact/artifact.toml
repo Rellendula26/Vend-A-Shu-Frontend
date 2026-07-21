@@ -1,0 +1,23 @@
+kind = "mobile"
+previewPath = "/"
+title = "Vend-a-Shu"
+version = "1.0.0"
+id = "artifacts/vend-a-shu"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/" ]
+localPort = 19262
+
+[services.development]
+run = "pnpm --filter @workspace/vend-a-shu run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/vend-a-shu", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/vend-a-shu", "run", "serve" ]
+
+[services.env]
+PORT = "19262"
+BASE_PATH = "/"

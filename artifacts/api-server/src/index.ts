@@ -1,5 +1,10 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { seedDatabase } from "./lib/seed";
+
+seedDatabase().catch((err) => {
+  logger.error({ err }, "Database seeding failed");
+});
 
 const rawPort = process.env["PORT"];
 

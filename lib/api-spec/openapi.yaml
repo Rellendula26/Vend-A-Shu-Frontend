@@ -3,13 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Vend-a-Shu API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: users
+    description: User operations
+  - name: shoes
+    description: Shoe catalog operations
+  - name: bins
+    description: Storage bin operations
+  - name: vend
+    description: Vending hardware operations
 paths:
   /healthz:
     get:
@@ -24,6 +32,239 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /shoes:
+    get:
+      operationId: listShoes
+      tags: [shoes]
+      summary: List shoes (excludes permanently removed)
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of shoes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Shoe"
+    post:
+      operationId: addShoe
+      tags: [shoes]
+      summary: Add a shoe and occupy its bin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShoeInput"
+      responses:
+        "201":
+          description: Shoe added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shoe"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Bin not available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /shoes/{id}:
+    get:
+      operationId: getShoe
+      tags: [shoes]
+      summary: Get a shoe
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shoe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shoe"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: removeShoe
+      tags: [shoes]
+      summary: Permanently remove a shoe and free its bin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /bins:
+    get:
+      operationId: listBins
+      tags: [bins]
+      summary: List all bins
+      responses:
+        "200":
+          description: List of bins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bin"
+  /bins/available:
+    get:
+      operationId: listAvailableBins
+      tags: [bins]
+      summary: List available bins
+      responses:
+        "200":
+          description: List of available bins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bin"
+  /vend:
+    post:
+      operationId: vendShoe
+      tags: [vend]
+      summary: Eject the bin for a shoe (servo + LED, simulated off-hardware)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VendRequest"
+      responses:
+        "200":
+          description: Bin ejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendResult"
+        "404":
+          description: Shoe not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /vend/done:
+    post:
+      operationId: vendDone
+      tags: [vend]
+      summary: Close the bin after removal; optionally remove the shoe permanently
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VendDoneRequest"
+      responses:
+        "200":
+          description: Done confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Shoe not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /return:
+    post:
+      operationId: returnShoe
+      tags: [vend]
+      summary: Mark a vended shoe as returned to its bin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReturnRequest"
+      responses:
+        "200":
+          description: Shoe returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Shoe not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +274,164 @@ components:
           type: string
       required:
         - status
-
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    User:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        createdAt:
+          type: ["string", "null"]
+    UserInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+    Shoe:
+      type: object
+      required:
+        [
+          id,
+          userId,
+          shoeType,
+          subsection,
+          binCol,
+          binRow,
+          binLocation,
+          isBoots,
+          status,
+        ]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        shoeType:
+          type: string
+        construction:
+          type: ["string", "null"]
+        season:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
+        designer:
+          type: ["string", "null"]
+        subsection:
+          type: string
+        binCol:
+          type: string
+        binRow:
+          type: string
+        binLocation:
+          type: string
+        isBoots:
+          type: boolean
+        imagePath:
+          type: ["string", "null"]
+        labelText:
+          type: ["string", "null"]
+        status:
+          type: string
+          description: stored | vended | removed
+        createdAt:
+          type: ["string", "null"]
+    ShoeInput:
+      type: object
+      required: [userId, shoeType, subsection, binCol, binRow, binLocation]
+      properties:
+        userId:
+          type: integer
+        shoeType:
+          type: string
+          minLength: 1
+        construction:
+          type: string
+        season:
+          type: string
+        color:
+          type: string
+        designer:
+          type: string
+        subsection:
+          type: string
+        binCol:
+          type: string
+        binRow:
+          type: string
+        binLocation:
+          type: string
+        labelText:
+          type: string
+    Bin:
+      type: object
+      required: [id, subsection, binCol, binRow, binLocation, status]
+      properties:
+        id:
+          type: integer
+        subsection:
+          type: string
+        binCol:
+          type: string
+        binRow:
+          type: string
+        binLocation:
+          type: string
+          description: LF | R | RF | FB
+        status:
+          type: string
+          description: available | occupied
+        shoeId:
+          type: ["integer", "null"]
+    VendRequest:
+      type: object
+      required: [shoeId]
+      properties:
+        shoeId:
+          type: integer
+    VendDoneRequest:
+      type: object
+      required: [shoeId]
+      properties:
+        shoeId:
+          type: integer
+        permanent:
+          type: boolean
+          default: false
+    ReturnRequest:
+      type: object
+      required: [shoeId]
+      properties:
+        shoeId:
+          type: integer
+    VendResult:
+      type: object
+      required: [message, subsection, binCol, binRow, binLocation, hardware]
+      properties:
+        message:
+          type: string
+        subsection:
+          type: string
+        binCol:
+          type: string
+        binRow:
+          type: string
+        binLocation:
+          type: string
+        hardware:
+          type: boolean

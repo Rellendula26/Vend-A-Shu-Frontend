@@ -1,0 +1,1 @@
+- [VAS API contract decision](vas-api-contract.md) — rebuilt API is camelCase, not the original Flask snake_case; boots/status rules enforced server-side.
