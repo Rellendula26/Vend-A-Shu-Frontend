@@ -1,0 +1,96 @@
+import time
+
+# Falls back to simulation mode if not on a Pi
+try:
+    from adafruit_pca9685 import PCA9685
+    from adafruit_motor import servo as adafruit_servo
+    import board
+    import busio
+    HARDWARE_AVAILABLE = True
+except ImportError:
+    HARDWARE_AVAILABLE = False
+    print("Hardware libraries not found. Running in simulation mode.")
+
+# I2C addresses for each subsection's PCA9685 (defaults 0x40-0x45)
+SUBSECTION_ADDRESSES = {
+    'SS-A': 0x40,
+    'SS-B': 0x41,
+    'SS-C': 0x42,
+    'SS-D': 0x43,
+    'SS-E': 0x44,
+    'SS-F': 0x45,
+}
+
+SERVO_CHANNELS = [0, 1, 2, 3]
+LED_CHANNELS = [4, 5, 6, 7, 8, 9, 10, 11]
+
+ROW_TO_SERVO = {'R1': 0, 'R2': 1, 'R3': 2, 'R4': 3}
+ROW_TO_LED = {'R1': 4, 'R2': 5, 'R3': 6, 'R4': 7}
+
+pca_boards = {}
+
+def init_hardware():
+    if not HARDWARE_AVAILABLE:
+        print("Simulation mode: hardware init skipped.")
+        return
+    i2c = busio.I2C(board.SCL, board.SDA)
+    for ss, addr in SUBSECTION_ADDRESSES.items():
+        try:
+            pca_boards[ss] = PCA9685(i2c, address=addr)
+            pca_boards[ss].frequency = 50
+            print(f"Initialized PCA9685 for {ss} at address {hex(addr)}")
+        except Exception as e:
+            print(f"Could not initialize {ss}: {e}")
+
+def vend_bin(subsection, bin_row):
+    """Eject bin ~1 inch, blink LED 3x, hold LED on."""
+    if not HARDWARE_AVAILABLE:
+        print(f"[SIM] Vending bin: {subsection} {bin_row}")
+        return True
+    if subsection not in pca_boards:
+        print(f"No PCA9685 found for {subsection}")
+        return False
+    pca = pca_boards[subsection]
+    servo_ch = ROW_TO_SERVO.get(bin_row)
+    led_ch = ROW_TO_LED.get(bin_row)
+    if servo_ch is None or led_ch is None:
+        return False
+    for _ in range(3):
+        pca.channels[led_ch].duty_cycle = 0xFFFF
+        time.sleep(0.2)
+        pca.channels[led_ch].duty_cycle = 0
+        time.sleep(0.2)
+    servo = adafruit_servo.Servo(pca.channels[servo_ch])
+    servo.angle = 90
+    time.sleep(0.5)
+    pca.channels[led_ch].duty_cycle = 0xFFFF
+    return True
+
+def close_bin(subsection, bin_row):
+    """Retract servo and turn off LED after user hits Done."""
+    if not HARDWARE_AVAILABLE:
+        print(f"[SIM] Closing bin: {subsection} {bin_row}")
+        return True
+    if subsection not in pca_boards:
+        return False
+    pca = pca_boards[subsection]
+    servo_ch = ROW_TO_SERVO.get(bin_row)
+    led_ch = ROW_TO_LED.get(bin_row)
+    if servo_ch is None or led_ch is None:
+        return False
+    servo = adafruit_servo.Servo(pca.channels[servo_ch])
+    servo.angle = 0
+    time.sleep(0.5)
+    pca.channels[led_ch].duty_cycle = 0
+    return True
+
+def fan_on(subsection):
+    if not HARDWARE_AVAILABLE:
+        print(f"[SIM] Fan ON: {subsection}")
+        return
+    # Fan controlled via GPIO per fan driver circuit
+
+def fan_off(subsection):
+    if not HARDWARE_AVAILABLE:
+        print(f"[SIM] Fan OFF: {subsection}")
+        return
