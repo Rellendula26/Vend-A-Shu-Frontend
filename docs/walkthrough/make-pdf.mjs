@@ -296,7 +296,7 @@ ly = bullets([
   "Full-color, ink-free printing (ZINK\u00AE zero-ink technology) \u2014 no cartridges to replace.",
   "Prints labels up to 2\u2033 wide and 17\u2033 long at 313 dpi \u2014 room for a shoe photo, owner name, and bin coordinates on one label.",
   "Connects over Wi-Fi, so the VAS system can send labels directly without cables.",
-  "Compact countertop footprint \u2014 it can live right next to the VAS unit.",
+  "Compact enough to store in the top drawer of the VAS unit \u2014 that is where yours is kept.",
 ], M, ly, lcW, { size: 9.5, gap: 5 });
 
 doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(13).text("How it will work", M, Math.max(ly + 8, cpY + cpH + 30));
