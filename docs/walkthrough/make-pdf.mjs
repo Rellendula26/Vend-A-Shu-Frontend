@@ -66,7 +66,8 @@ const toc = [
   "7.  Adding Shoes \u2014 Part 2: Backdrop Gallery",
   "8.  Vending Shoes",
   "9.  Returning Shoes",
-  "10.  Troubleshooting & FAQ",
+  "10.  Label Printing with the ColAura (Coming Soon)",
+  "11.  Troubleshooting & FAQ",
 ];
 for (const t of toc) { doc.text(t, M + 30, cy); cy += 19; }
 doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(11).text(`Prepared by ${COMPANY}`, M + 14, H - 120);
@@ -266,9 +267,56 @@ screenPage(
   "Because every pair has a permanent assigned bin, shoes always return to the same location \u2014 the system never shuffles pairs between bins, so physical organization stays consistent forever.",
 );
 
-// ============ 10. TROUBLESHOOTING ============
+// ============ 10. LABEL PRINTING (COMING SOON) ============
 doc.addPage();
-pageHeader("Section 10", "Troubleshooting & FAQ");
+pageHeader("Section 10 \u2014 Coming Soon", "Label Printing with the ColAura");
+// "Coming soon" ribbon
+doc.roundedRect(W - M - 150, 44, 150, 22, 11).fill("#fff7ed");
+doc.fillColor(ORANGE).font("Helvetica-Bold").fontSize(9).text("FEATURE IN DEVELOPMENT", W - M - 141, 51);
+
+doc.fillColor(BODY).font("Helvetica").fontSize(10.5).text(
+  "Every pair stored in Vend-a-Shu already carries label text in its record \u2014 a compact summary of the shoe's type, owner, and bin assignment. The next revision of the system will print these as full-color physical labels using the Brother ColAura (VC-500W) color photo & label printer, so each bin can be labeled with the very photo and details stored in the app.",
+  M, 104, { width: W - 2 * M, lineGap: 4 });
+
+// Product photo, right-aligned
+const cpW = 190, cpH = cpW * (500 / 501); // near-square
+const cpX = W - M - cpW, cpY = doc.y + 18;
+doc.save();
+doc.roundedRect(cpX, cpY, cpW, cpH, 12).clip();
+doc.image(path.join(DIR, "colaura-2.jpg"), cpX, cpY, { width: cpW, height: cpH, cover: [cpW, cpH] });
+doc.restore();
+doc.roundedRect(cpX, cpY, cpW, cpH, 12).lineWidth(1).stroke("#d1d5db");
+doc.fillColor(GREY).font("Helvetica").fontSize(8).text("Brother ColAura (VC-500W) color photo & label printer", cpX, cpY + cpH + 6, { width: cpW });
+
+// About the printer, left column
+const lcW = W - 2 * M - cpW - 24;
+doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(13).text("About the printer", M, cpY);
+let ly = doc.y + 8;
+ly = bullets([
+  "Full-color, ink-free printing (ZINK\u00AE zero-ink technology) \u2014 no cartridges to replace.",
+  "Prints labels up to 2\u2033 wide and 17\u2033 long at 313 dpi \u2014 room for a shoe photo, owner name, and bin coordinates on one label.",
+  "Connects over Wi-Fi, so the VAS system can send labels directly without cables.",
+  "Compact countertop footprint \u2014 it can live right next to the VAS unit.",
+], M, ly, lcW, { size: 9.5, gap: 5 });
+
+doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(13).text("How it will work", M, Math.max(ly + 8, cpY + cpH + 30));
+let hy = doc.y + 8;
+hy = bullets([
+  "When you finish adding a pair, a Print Label button will appear on the confirmation screen.",
+  "The label will include the studio photo (with your chosen backdrop), shoe type, designer, owner, and the bin coordinates (column / row / location) \u2014 stick it on the bin front for at-a-glance identification without opening the app.",
+  "Labels for existing pairs will be printable retroactively from the shoe detail view \u2014 every record already stores the label text, so no re-entry will be needed.",
+], M, hy, W - 2 * M, { size: 9.5, gap: 5 });
+
+doc.roundedRect(M, hy + 8, W - 2 * M, 54, 8).fill("#fff7ed");
+doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(10).text("Status of this feature", M + 14, hy + 18);
+doc.fillColor(BODY).font("Helvetica").fontSize(9.5).text(
+  "ColAura label printing is planned but not yet available in Rev A \u2014 this detail is yet to be added. No action is needed now; when the feature ships, existing shoe records will print without any migration or re-entry.",
+  M + 14, doc.y + 3, { width: W - 2 * M - 28, lineGap: 3 });
+footer("Label Printing (Coming Soon)");
+
+// ============ 11. TROUBLESHOOTING ============
+doc.addPage();
+pageHeader("Section 11", "Troubleshooting & FAQ");
 const qa = [
   ["The photo background removal fails with an error.", "Retry with a clearer photo: good lighting, shoes fully in frame, JPEG or PNG format. The app reports the exact reason (invalid image vs. processing failure). Processing takes ~5 seconds \u2014 the spinner is normal, not a hang."],
   ["I don't see the newest features in my app.", "The published (live) app updates only when a new version is published. If a feature exists in preview but not in your app, a republish is needed."],
