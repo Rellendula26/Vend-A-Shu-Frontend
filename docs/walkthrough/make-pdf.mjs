@@ -66,7 +66,7 @@ const toc = [
   "7.  Adding Shoes \u2014 Part 2: Backdrop Gallery",
   "8.  Vending Shoes",
   "9.  Returning Shoes",
-  "10.  Label Printing with the ColAura (Coming Soon)",
+  "10.  Label Printing with the ColAura",
   "11.  Troubleshooting & FAQ",
 ];
 for (const t of toc) { doc.text(t, M + 30, cy); cy += 19; }
@@ -84,14 +84,14 @@ doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(13).text("How the pieces fit
 let oy = doc.y + 8;
 oy = bullets([
   "The app (phone or tablet) \u2014 the interface you interact with.",
-  "The VAS server & database \u2014 keeps the master record of users, shoes, bins, and photos. Runs either on the built-in cloud database or on a Raspberry Pi inside your unit.",
+  "The VAS server & database \u2014 keeps the master record of users, shoes, bins, and photos. Runs on the Raspberry Pi inside your unit.",
   "The storage unit hardware \u2014 physical bins organized by column (C1\u2013C6), row (R1\u2013R4), and location (LF/RF). The app addresses bins by these coordinates; when you vend, the correct bin ejects and its LED lights up.",
 ], M, oy, W - 2 * M);
 doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(13).text("What you need before starting", M, oy + 10);
 oy = doc.y + 8;
 oy = bullets([
   "A phone or tablet with the Vend-a-Shu app installed.",
-  "Your device on the same Wi-Fi network as the VAS unit (for Raspberry Pi installations).",
+  "Your device on the same Wi-Fi network as the VAS unit.",
   "A user profile (created in Options) so shoes are stored under the correct owner.",
   "Camera or photo library access if you want automatic shoe photos \u2014 the app will request permission the first time; you can decline and add shoes without photos.",
 ], M, oy, W - 2 * M);
@@ -105,7 +105,6 @@ oy = bullets([
 doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(13).text("Key rules the system enforces for you", M, oy + 10);
 oy = doc.y + 8;
 bullets([
-  "Boots are automatically routed to boot-compatible bins only \u2014 you cannot accidentally assign boots to a standard bin.",
   "A pair can only move through valid states: stored, then vended, then stored again (or removed). The app will never let a pair be vended twice or returned when it is not out.",
   "Photos are validated (JPEG/PNG, max 3 MB after processing) and stored with the shoe record, so the catalog thumbnail always matches the pair in the bin.",
 ], M, oy, W - 2 * M);
@@ -142,7 +141,7 @@ screenPage(
   "The very first time you open the app, a short guided tour walks you through what the system does before you touch any controls. Nothing is saved or changed during onboarding \u2014 it is purely informational, and you will only see it once.",
   "What to do on this screen",
   [
-    "Read the prompt: your device must be on the same Wi-Fi network as the VAS unit. The app communicates over your local network; cellular data alone will not reach a Raspberry Pi unit.",
+    "Read the prompt: your device must be on the same Wi-Fi network as the VAS unit. The app communicates with the unit over your local network.",
     "The dots below the text show your position in the tour (screen 1 of 4). Each screen introduces one concept.",
     "Tap the orange Next button to advance. There is no data entry anywhere in the tour.",
   ],
@@ -154,8 +153,8 @@ screenPage(
   "This screen establishes the link between the app and the VAS database \u2014 the record of every user, shoe, bin, and photo. The app checks connectivity for you: the green \u201CVAS database online\u201D badge means the built-in database has already been found.",
   "Field-by-field",
   [
-    "IP Address (optional) \u2014 only needed for a Raspberry Pi VAS unit on your local network. Find it on the unit's info panel or your router's device list. Leave blank to use the built-in database.",
-    "Port (optional) \u2014 the network port for a Raspberry Pi unit; supplied with your unit's documentation. Leave blank for the built-in database.",
+    "IP Address (optional) \u2014 your VAS unit's address on your local network, if it is not detected automatically. Find it on the unit's info panel or your router's device list.",
+    "Port (optional) \u2014 the unit's network port, supplied with your unit's documentation. Leave blank when the unit is auto-detected.",
     "Connect \u2014 with the green badge showing, just tap Connect. If you entered an IP/port, the app validates the connection before proceeding and tells you explicitly if it fails.",
     "The yellow help box (\u201CWhere can I find my IP?\u201D) is always visible on this screen for reference.",
   ],
@@ -237,7 +236,7 @@ gallery.forEach(([name, file, desc], i) => {
   doc.fillColor(GREY).font("Helvetica").fontSize(8).text(desc, x, doc.y + 1, { width: cell, lineGap: 1.5 });
 });
 doc.fillColor(BODY).font("Helvetica").fontSize(10).text(
-  "After the photo, step two of intake collects the details: shoe type, construction/material, season, color, designer, and subsection. The system then assigns the pair to an appropriate bin automatically \u2014 boots go only to boot-compatible bins \u2014 and shows you the final record (photo included) for confirmation before saving.",
+  "After the photo, step two of intake collects the details: shoe type, construction/material, season, color, designer, and subsection. The system then assigns the pair to an appropriate bin automatically and shows you the final record (photo included) for confirmation before saving.",
   M, gy + 2 * (cell + textH + 14) + 6, { width: W - 2 * M, lineGap: 3.5 });
 footer("Backdrop Gallery");
 
@@ -267,15 +266,15 @@ screenPage(
   "Because every pair has a permanent assigned bin, shoes always return to the same location \u2014 the system never shuffles pairs between bins, so physical organization stays consistent forever.",
 );
 
-// ============ 10. LABEL PRINTING (COMING SOON) ============
+// ============ 10. LABEL PRINTING ============
 doc.addPage();
-pageHeader("Section 10 \u2014 Coming Soon", "Label Printing with the ColAura");
-// "Coming soon" ribbon
-doc.roundedRect(W - M - 150, 44, 150, 22, 11).fill("#fff7ed");
-doc.fillColor(ORANGE).font("Helvetica-Bold").fontSize(9).text("FEATURE IN DEVELOPMENT", W - M - 141, 51);
+pageHeader("Section 10", "Label Printing with the ColAura");
+// documentation-pending ribbon
+doc.roundedRect(W - M - 168, 44, 168, 22, 11).fill("#fff7ed");
+doc.fillColor(ORANGE).font("Helvetica-Bold").fontSize(9).text("DOCUMENTATION TO BE ADDED", W - M - 159, 51);
 
 doc.fillColor(BODY).font("Helvetica").fontSize(10.5).text(
-  "Every pair stored in Vend-a-Shu already carries label text in its record \u2014 a compact summary of the shoe's type, owner, and bin assignment. The next revision of the system will print these as full-color physical labels using the Brother ColAura (VC-500W) color photo & label printer, so each bin can be labeled with the very photo and details stored in the app.",
+  "Every pair stored in Vend-a-Shu carries label text in its record \u2014 a compact summary of the shoe's type, owner, and bin assignment. These print as full-color physical labels using the Brother ColAura (VC-500W) color photo & label printer, so each bin can be labeled with the very photo and details stored in the app.",
   M, 104, { width: W - 2 * M, lineGap: 4 });
 
 // Product photo, right-aligned
@@ -299,20 +298,19 @@ ly = bullets([
   "Compact enough to store in the top drawer of the VAS unit \u2014 that is where yours is kept.",
 ], M, ly, lcW, { size: 9.5, gap: 5 });
 
-doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(13).text("How it will work", M, Math.max(ly + 8, cpY + cpH + 30));
+doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(13).text("What labels are for", M, Math.max(ly + 8, cpY + cpH + 30));
 let hy = doc.y + 8;
 hy = bullets([
-  "When you finish adding a pair, a Print Label button will appear on the confirmation screen.",
-  "The label will include the studio photo (with your chosen backdrop), shoe type, designer, owner, and the bin coordinates (column / row / location) \u2014 stick it on the bin front for at-a-glance identification without opening the app.",
-  "Labels for existing pairs will be printable retroactively from the shoe detail view \u2014 every record already stores the label text, so no re-entry will be needed.",
+  "Labels combine the shoe details stored in the app with the bin coordinates (column / row / location), so a bin can be identified at a glance without opening the app.",
+  "Every pair's label text is already recorded in the system at intake.",
 ], M, hy, W - 2 * M, { size: 9.5, gap: 5 });
 
 doc.roundedRect(M, hy + 8, W - 2 * M, 54, 8).fill("#fff7ed");
-doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(10).text("Status of this feature", M + 14, hy + 18);
+doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(10).text("Documentation status", M + 14, hy + 18);
 doc.fillColor(BODY).font("Helvetica").fontSize(9.5).text(
-  "ColAura label printing is planned but not yet available in Rev A \u2014 this detail is yet to be added. No action is needed now; when the feature ships, existing shoe records will print without any migration or re-entry.",
+  "Detailed documentation for the ColAura label printing workflow is yet to be added to this guide. It will be included in a future revision of this document.",
   M + 14, doc.y + 3, { width: W - 2 * M - 28, lineGap: 3 });
-footer("Label Printing (Coming Soon)");
+footer("Label Printing");
 
 // ============ 11. TROUBLESHOOTING ============
 doc.addPage();
@@ -326,7 +324,7 @@ const qa = [
   ["What are the photo limits?", "JPEG or PNG input; the processed image is downscaled to 900 px on its longest side and must be under 3 MB \u2014 both are handled automatically, so ordinary phone photos always fit."],
   ["The unit ejected the wrong bin / nothing happened.", "Check the bin coordinates shown on the confirmation screen against the unit's labels. If the mismatch persists, power-cycle the unit and reconnect from the Connect screen."],
   ["Can I access my shoe catalog away from home?", "Yes \u2014 browsing, searching, and reviewing your collection works remotely, e.g. while shopping, so you can check what you already own before buying. Only vending and returning require you to be physically at the unit."],
-  ["Can I print labels for the shoe bins?", "Shoe label printing via the Colaura printer is planned but not yet available in this revision \u2014 this detail is yet to be added. Each pair already has label text recorded in the system, so existing records will be printable as soon as the feature ships."],
+  ["Can I print labels for the shoe bins?", "Yes \u2014 shoe labels print via the ColAura printer stored in the top drawer of the unit. Detailed documentation for the label printing workflow is yet to be added to this guide (see Section 10)."],
 ];
 let qy = 100;
 for (const [q, a] of qa) {
