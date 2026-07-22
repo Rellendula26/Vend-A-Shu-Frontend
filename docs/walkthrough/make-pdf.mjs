@@ -94,6 +94,13 @@ oy = bullets([
   "A user profile (created in Options) so shoes are stored under the correct owner.",
   "Camera or photo library access if you want automatic shoe photos \u2014 the app will request permission the first time; you can decline and add shoes without photos.",
 ], M, oy, W - 2 * M);
+doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(13).text("Access your collection from anywhere", M, oy + 10);
+oy = doc.y + 8;
+oy = bullets([
+  "Your VAS data is not locked to your home network: the catalog \u2014 every pair, photo, and status \u2014 can be accessed remotely from your phone.",
+  "This is especially handy while shopping: pull up your collection in the store to check whether you already own a similar pair, what colors you have, or which designers dominate your closet before buying.",
+  "Vending and returning still require you to be at the unit (the hardware has to physically eject a bin), but browsing, searching, and reviewing your catalog work from anywhere.",
+], M, oy, W - 2 * M);
 doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(13).text("Key rules the system enforces for you", M, oy + 10);
 oy = doc.y + 8;
 bullets([
@@ -270,6 +277,8 @@ const qa = [
   ["Can two people use the same unit?", "Yes. Create a user per person in Options; shoes are recorded per owner. Use Switch User on the Home screen to change the active person, and turn off \u201CRemember me\u201D on shared devices."],
   ["What are the photo limits?", "JPEG or PNG input; the processed image is downscaled to 900 px on its longest side and must be under 3 MB \u2014 both are handled automatically, so ordinary phone photos always fit."],
   ["The unit ejected the wrong bin / nothing happened.", "Check the bin coordinates shown on the confirmation screen against the unit's labels. If the mismatch persists, power-cycle the unit and reconnect from the Connect screen."],
+  ["Can I access my shoe catalog away from home?", "Yes \u2014 browsing, searching, and reviewing your collection works remotely, e.g. while shopping, so you can check what you already own before buying. Only vending and returning require you to be physically at the unit."],
+  ["Can I print labels for the shoe bins?", "Shoe label printing via the Colaura printer is planned but not yet available in this revision \u2014 this detail is yet to be added. Each pair already has label text recorded in the system, so existing records will be printable as soon as the feature ships."],
 ];
 let qy = 100;
 for (const [q, a] of qa) {
