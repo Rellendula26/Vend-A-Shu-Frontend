@@ -16,10 +16,5 @@
     "pdfkit": "^0.19.1",
     "prettier": "^3.9.5",
     "typescript": "~5.9.3"
-  },
-  "pnpm": {
-    "overrides": {
-      "sharp": "^0.35.3"
-    }
   }
 }
