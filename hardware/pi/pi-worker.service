@@ -1,0 +1,17 @@
+[Unit]
+Description=Vend-A-Shu Pi Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/vend-a-shu/hardware/pi
+EnvironmentFile=/home/pi/vend-a-shu/hardware/pi/.env
+Environment=DEVICE_ID=vend-a-shoe-001
+ExecStart=/home/pi/vend-a-shu/hardware/pi/.venv/bin/python /home/pi/vend-a-shu/hardware/pi/pi_worker.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

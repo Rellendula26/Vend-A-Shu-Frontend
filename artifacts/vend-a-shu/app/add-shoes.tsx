@@ -31,10 +31,9 @@ import {
   getListShoesQueryKey,
   getListAvailableBinsQueryKey,
   getListBinsQueryKey,
+  getBaseUrl,
 } from '@workspace/api-client-react';
 import type { Bin } from '@workspace/api-client-react';
-
-const API_ORIGIN = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
 const SEASONS = ['Winter', 'Summer', 'Spring', 'Fall', 'All'] as const;
 const SUBSECTIONS = ['SS-A', 'SS-B', 'SS-C', 'SS-D', 'SS-E', 'SS-F'] as const;
@@ -464,7 +463,9 @@ export default function AddShoes() {
                   testID={`bg-${bg.id}`}
                 >
                   <Image
-                    source={{ uri: `${API_ORIGIN}${bg.url}` }}
+                    source={{
+                      uri: `${getBaseUrl() ?? ''}${bg.url}`,
+                    }}
                     style={styles.bgSwatchImage}
                   />
                   <Text style={[styles.bgSwatchLabel, { color: colors.navy }]} numberOfLines={1}>
