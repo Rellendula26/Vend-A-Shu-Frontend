@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { setBaseUrl, useHealthCheck } from '@workspace/api-client-react';
 import { useColors } from '@/hooks/useColors';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { AppHeader, OrangeButton, useScreenInsets } from '@/components/vas';
-import { useHealthCheck } from '@workspace/api-client-react';
+import {
+  checkApiHealth,
+  CONNECT_ERROR_MESSAGE,
+  persistApiBaseUrl,
+  resolveConnectTarget,
+} from '@/lib/api-base-url';
 
 export default function Connect() {
   const colors = useColors();
@@ -13,7 +19,35 @@ export default function Connect() {
   const insets = useScreenInsets();
   const [ip, setIp] = useState('');
   const [port, setPort] = useState('');
+  const [connecting, setConnecting] = useState(false);
   const { isError } = useHealthCheck();
+
+  const handleConnect = async () => {
+    if (connecting) {
+      return;
+    }
+
+    setConnecting(true);
+    try {
+      const target = await resolveConnectTarget(ip, port);
+      if (!target) {
+        Alert.alert('Connection failed', CONNECT_ERROR_MESSAGE);
+        return;
+      }
+
+      const healthy = await checkApiHealth(target);
+      if (!healthy) {
+        Alert.alert('Connection failed', CONNECT_ERROR_MESSAGE);
+        return;
+      }
+
+      await persistApiBaseUrl(target);
+      setBaseUrl(target);
+      router.push('/select-user');
+    } finally {
+      setConnecting(false);
+    }
+  };
 
   return (
     <View
@@ -59,6 +93,8 @@ export default function Connect() {
           value={ip}
           onChangeText={setIp}
           keyboardType="numbers-and-punctuation"
+          autoCapitalize="none"
+          autoCorrect={false}
           testID="input-ip"
         />
         <TextInput
@@ -74,8 +110,9 @@ export default function Connect() {
           testID="input-port"
         />
         <OrangeButton
-          title="Connect"
-          onPress={() => router.push('/select-user')}
+          title={connecting ? 'Connecting…' : 'Connect'}
+          onPress={handleConnect}
+          disabled={connecting}
           testID="connect-button"
         />
         <View style={[styles.helpBox, { backgroundColor: colors.peach }]}>

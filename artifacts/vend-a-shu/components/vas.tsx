@@ -16,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
 import type { Shoe } from '@workspace/api-client-react';
+import { getBaseUrl } from '@workspace/api-client-react';
 
 export function useScreenInsets() {
   const insets = useSafeAreaInsets();
@@ -36,8 +37,6 @@ export function shoeEmoji(shoe: Pick<Shoe, 'shoeType' | 'isBoots'>): string {
   return '👟';
 }
 
-const API_ORIGIN = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
-
 /** Shows the shoe's processed photo when available, otherwise its emoji. */
 export function ShoeImage({
   shoe,
@@ -49,13 +48,16 @@ export function ShoeImage({
   emojiStyle: StyleProp<TextStyle>;
 }) {
   if (shoe.imagePath) {
-    return (
-      <Image
-        source={{ uri: `${API_ORIGIN}${shoe.imagePath}` }}
-        style={imageStyle}
-        resizeMode="cover"
-      />
-    );
+    const apiOrigin = getBaseUrl();
+    if (apiOrigin) {
+      return (
+        <Image
+          source={{ uri: `${apiOrigin}${shoe.imagePath}` }}
+          style={imageStyle}
+          resizeMode="cover"
+        />
+      );
+    }
   }
   return <Text style={emojiStyle}>{shoeEmoji(shoe)}</Text>;
 }

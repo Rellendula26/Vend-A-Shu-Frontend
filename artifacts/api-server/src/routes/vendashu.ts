@@ -23,7 +23,9 @@ import {
   ReturnShoeBody,
   ReturnShoeResponse,
 } from "@workspace/api-zod";
-import { vendBin, closeBin } from "../lib/hardware";
+import { resolveHardwareMapping } from "../lib/hardware-mapping";
+import { enqueueDispenseCommand } from "../lib/enqueue-dispense";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -50,6 +52,7 @@ const shoeColumns = {
   status: shoesTable.status,
   imagePath: shoesTable.imagePath,
   createdAt: shoesTable.createdAt,
+  updatedAt: shoesTable.updatedAt,
 } as const;
 
 function serializeShoe(s: Omit<Shoe, "photoData">) {
@@ -304,6 +307,9 @@ router.get("/bins/available", async (_req, res): Promise<void> => {
   res.json(ListAvailableBinsResponse.parse(bins.map(serializeBin)));
 });
 
+const HARDWARE_UNAVAILABLE_MESSAGE =
+  "This bin is not connected to physical hardware on the current prototype. Only the first four bins in SS-A / C1 / R1 are hardware-enabled.";
+
 // Vend
 router.post("/vend", async (req, res): Promise<void> => {
   const parsed = VendShoeBody.safeParse(req.body);
@@ -325,11 +331,64 @@ router.post("/vend", async (req, res): Promise<void> => {
       .json({ error: `Shoe cannot be vended (status: ${shoe.status})` });
     return;
   }
-  const success = vendBin(shoe.subsection, shoe.binRow);
-  await db
+
+  const hardware = resolveHardwareMapping({
+    subsection: shoe.subsection,
+    binCol: shoe.binCol,
+    binRow: shoe.binRow,
+    binLocation: shoe.binLocation,
+  });
+  if (!hardware.enabled) {
+    res.status(422).json({ error: HARDWARE_UNAVAILABLE_MESSAGE });
+    return;
+  }
+
+  const enqueueResult = await enqueueDispenseCommand(
+    hardware.mapping.supabaseAction,
+  );
+  if (!enqueueResult.ok) {
+    if (enqueueResult.reason === "drawer_busy") {
+      res.status(409).json({
+        error: "A dispense command is already pending for this drawer",
+      });
+      return;
+    }
+    res.status(503).json({ error: "Hardware command queue unavailable" });
+    return;
+  }
+
+  if (enqueueResult.dryRun) {
+    res.json(
+      VendShoeResponse.parse({
+        message:
+          "Dry run: bin would eject (no command queued, inventory unchanged)",
+        subsection: shoe.subsection,
+        binCol: shoe.binCol,
+        binRow: shoe.binRow,
+        binLocation: shoe.binLocation,
+        hardware: false,
+      }),
+    );
+    return;
+  }
+
+  const [updated] = await db
     .update(shoesTable)
     .set({ status: "vended" })
-    .where(eq(shoesTable.id, shoe.id));
+    .where(and(eq(shoesTable.id, shoe.id), eq(shoesTable.status, "stored")))
+    .returning();
+
+  if (!updated) {
+    logger.fatal(
+      { commandId: enqueueResult.commandId, shoeId: shoe.id },
+      "CRITICAL: Supabase command queued but shoe status update failed",
+    );
+    res.status(500).json({
+      error: "Hardware command queued but inventory update failed",
+    });
+    return;
+  }
+
   res.json(
     VendShoeResponse.parse({
       message: "Bin ejected",
@@ -337,7 +396,7 @@ router.post("/vend", async (req, res): Promise<void> => {
       binCol: shoe.binCol,
       binRow: shoe.binRow,
       binLocation: shoe.binLocation,
-      hardware: success,
+      hardware: true,
     }),
   );
 });
@@ -362,22 +421,41 @@ router.post("/vend/done", async (req, res): Promise<void> => {
       .json({ error: `Shoe is not out of its bin (status: ${shoe.status})` });
     return;
   }
-  closeBin(shoe.subsection, shoe.binRow);
-  if (parsed.data.permanent) {
-    await db
-      .update(shoesTable)
-      .set({ status: "removed" })
-      .where(eq(shoesTable.id, shoe.id));
-    await db
-      .update(binsTable)
-      .set({ status: "available", shoeId: null })
-      .where(eq(binsTable.shoeId, shoe.id));
-  } else {
-    await db
-      .update(shoesTable)
-      .set({ status: "vended" })
-      .where(eq(shoesTable.id, shoe.id));
+
+  if (!parsed.data.permanent) {
+    res.json(VendDoneResponse.parse({ message: "Vend complete" }));
+    return;
   }
+
+  try {
+    await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(shoesTable)
+        .set({ status: "removed" })
+        .where(
+          and(eq(shoesTable.id, shoe.id), eq(shoesTable.status, "vended")),
+        )
+        .returning();
+      if (!updated) {
+        throw new Error("SHOE_NOT_VENDED");
+      }
+      await tx
+        .update(binsTable)
+        .set({ status: "available", shoeId: null })
+        .where(eq(binsTable.shoeId, shoe.id));
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message === "SHOE_NOT_VENDED") {
+      res.status(409).json({
+        error: `Shoe is not out of its bin (status: ${shoe.status})`,
+      });
+      return;
+    }
+    logger.error({ err, shoeId: shoe.id }, "Permanent removal failed");
+    res.status(500).json({ error: "Failed to complete permanent removal" });
+    return;
+  }
+
   res.json(VendDoneResponse.parse({ message: "Done confirmed" }));
 });
 
